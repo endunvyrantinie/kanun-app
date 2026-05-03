@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { GameState, SkillKey } from "./types";
 import { levelFromXp, xpForLevel, totalXpToReach } from "./progression";
+import { useAuth } from "./useAuth";
+import { db } from "./firebase";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const STORAGE_KEY = "kanun.v1";
 
@@ -39,19 +42,102 @@ function saveToStorage(state: GameState) {
   }
 }
 
+// Pick the higher / more advanced of two states (used when merging local progress
+// into an existing Firestore record after first sign-in).
+function mergeStates(a: GameState, b: GameState): GameState {
+  return {
+    xp: Math.max(a.xp, b.xp),
+    level: Math.max(a.level, b.level),
+    lives: Math.max(a.lives, b.lives),
+    streak: Math.max(a.streak, b.streak),
+    lastPlayed: a.lastPlayed && b.lastPlayed
+      ? (a.lastPlayed > b.lastPlayed ? a.lastPlayed : b.lastPlayed)
+      : a.lastPlayed ?? b.lastPlayed,
+    premium: a.premium || b.premium,
+    skill: {
+      recruitment: Math.max(a.skill.recruitment, b.skill.recruitment),
+      termination: Math.max(a.skill.termination, b.skill.termination),
+      compliance: Math.max(a.skill.compliance, b.skill.compliance),
+      leave: Math.max(a.skill.leave, b.skill.leave),
+      wages: Math.max(a.skill.wages, b.skill.wages),
+    },
+    badges: Array.from(new Set([...a.badges, ...b.badges])),
+    bestQuiz: Math.max(a.bestQuiz, b.bestQuiz),
+  };
+}
+
 export function useGameState() {
-  // Hydrate after mount to avoid SSR/CSR mismatch
+  const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState<GameState>(defaultState);
   const [hydrated, setHydrated] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
 
+  // Debounce timer for Firestore writes
+  const writeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastUidRef = useRef<string | null>(null);
+
+  // Step 1: hydrate from localStorage on first mount (always — gives instant UI)
   useEffect(() => {
     setState(loadFromStorage());
     setHydrated(true);
   }, []);
 
+  // Step 2: when auth state resolves, fetch + merge from Firestore
   useEffect(() => {
-    if (hydrated) saveToStorage(state);
-  }, [state, hydrated]);
+    if (!hydrated || authLoading) return;
+
+    // Signed out: nothing more to do (localStorage already loaded)
+    if (!user) {
+      lastUidRef.current = null;
+      return;
+    }
+    // Same user as last time: skip — no need to refetch
+    if (lastUidRef.current === user.uid) return;
+    lastUidRef.current = user.uid;
+
+    if (!db) return;
+    setSyncStatus("syncing");
+
+    (async () => {
+      try {
+        const ref = doc(db!, "users", user.uid);
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const cloud = { ...defaultState, ...snap.data() } as GameState;
+          // Merge with local in case user played before signing in
+          const local = loadFromStorage();
+          const merged = mergeStates(cloud, local);
+          setState(merged);
+          // Push merged state back so cloud is up to date
+          await setDoc(ref, merged, { merge: true });
+        } else {
+          // First sign-in: push local state to cloud
+          const local = loadFromStorage();
+          await setDoc(ref, local);
+          setState(local);
+        }
+        setSyncStatus("synced");
+      } catch (e) {
+        console.error("Firestore load failed:", e);
+        setSyncStatus("error");
+      }
+    })();
+  }, [user, authLoading, hydrated]);
+
+  // Step 3: on every state change, save to localStorage immediately + Firestore (debounced)
+  useEffect(() => {
+    if (!hydrated) return;
+    saveToStorage(state);
+
+    if (user && db) {
+      if (writeTimer.current) clearTimeout(writeTimer.current);
+      writeTimer.current = setTimeout(() => {
+        setDoc(doc(db!, "users", user.uid), state, { merge: true }).catch((e) => {
+          console.error("Firestore save failed:", e);
+        });
+      }, 600);
+    }
+  }, [state, hydrated, user]);
 
   const awardXp = useCallback((amount: number, skillKey?: SkillKey) => {
     setState((s) => {
@@ -106,6 +192,8 @@ export function useGameState() {
     state,
     hydrated,
     levelProgress,
+    syncStatus,
+    user,
     actions: {
       awardXp,
       loseLife,

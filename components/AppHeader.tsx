@@ -1,6 +1,7 @@
 "use client";
 
 import type { GameState } from "@/lib/types";
+import { AuthButton } from "./AuthButton";
 
 interface Props {
   state: GameState;
@@ -68,6 +69,9 @@ export function AppHeader({ state, levelProgress }: Props) {
             {state.level}
           </span>
         </div>
+
+        {/* Auth */}
+        <AuthButton />
       </div>
     </header>
   );
