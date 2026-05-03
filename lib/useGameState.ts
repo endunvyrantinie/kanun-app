@@ -44,7 +44,7 @@ function saveToStorage(state: GameState) {
 }
 
 // Firestore rejects undefined field values. Strip them before any setDoc.
-function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+function stripUndefined<T extends object>(obj: T): Partial<T> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (v !== undefined) out[k] = v;
