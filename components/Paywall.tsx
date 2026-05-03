@@ -1,24 +1,39 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Mode } from "@/lib/types";
+import type { Mode, Tier } from "@/lib/types";
+import { TIERS } from "@/lib/tiers";
+import type { User } from "firebase/auth";
 
 interface Props {
   open: boolean;
   reason: "lock" | "lives" | "premium";
   mode?: Mode | null;
   level: number;
+  user: User | null;
   onClose: () => void;
-  onUnlock: () => void;
+  onSignInPrompt: () => void;
   onWaitForLives?: () => void;
 }
 
-export function Paywall({ open, reason, mode, level, onClose, onUnlock, onWaitForLives }: Props) {
-  const [plan, setPlan] = useState<"monthly" | "yearly" | "team">("yearly");
+export function Paywall({
+  open,
+  reason,
+  mode,
+  level,
+  user,
+  onClose,
+  onSignInPrompt,
+  onWaitForLives,
+}: Props) {
+  const [tier, setTier] = useState<Exclude<Tier, "free">>("extended");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
+    setError(null);
     return () => {
       document.body.style.overflow = "";
     };
@@ -30,10 +45,43 @@ export function Paywall({ open, reason, mode, level, onClose, onUnlock, onWaitFo
   const pct = Math.min(100, Math.round((level / need) * 100));
   const isLives = reason === "lives";
 
+  async function handleUpgrade() {
+    if (!user) {
+      onSignInPrompt();
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tier,
+          uid: user.uid,
+          email: user.email,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? "Could not start checkout");
+      }
+      // Send the user off to Stripe-hosted checkout
+      window.location.href = data.url;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Checkout failed";
+      setError(msg);
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/55 z-[55] flex items-stretch justify-center sm:p-6">
       <div className="bg-bg w-full max-w-[720px] h-full sm:h-auto sm:max-h-[calc(100vh-48px)] sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between gap-3.5 px-4.5 py-3.5 border-b border-line bg-surface" style={{ paddingLeft: "18px", paddingRight: "18px" }}>
+        <div
+          className="flex items-center justify-between gap-3.5 py-3.5 border-b border-line bg-surface"
+          style={{ paddingLeft: "18px", paddingRight: "18px" }}
+        >
           <div className="font-semibold text-[15px] flex items-center gap-2.5">
             {isLives ? "Out of lives" : "Unlock Premium"}
             <span className="bg-accent-soft text-accent px-2 py-0.5 rounded-full text-[11px] font-semibold">
@@ -51,8 +99,11 @@ export function Paywall({ open, reason, mode, level, onClose, onUnlock, onWaitFo
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4.5 sm:px-7 py-5" style={{ paddingLeft: "18px", paddingRight: "18px" }}>
-          <div className="bg-ink text-white rounded-[12px] p-4.5 flex items-center gap-3.5 mb-4.5 relative overflow-hidden">
+        <div
+          className="flex-1 overflow-y-auto py-5"
+          style={{ paddingLeft: "18px", paddingRight: "18px" }}
+        >
+          <div className="bg-ink text-white rounded-[12px] p-4 sm:p-5 flex items-center gap-3.5 mb-4 relative overflow-hidden">
             <div
               className="absolute -top-10 -right-15 w-[200px] h-[200px] pointer-events-none"
               style={{
@@ -75,8 +126,8 @@ export function Paywall({ open, reason, mode, level, onClose, onUnlock, onWaitFo
               </h2>
               <p className="text-white/75 mt-1 text-[13px]">
                 {isLives
-                  ? "Wait 28 minutes for a free refill — or go premium for unlimited play."
-                  : `You're ${pct}% of the way there. Premium unlocks all advanced levels and unlimited play instantly.`}
+                  ? "Wait 28 minutes for a free refill — or upgrade for unlimited play."
+                  : `You're ${pct}% of the way there. Upgrade to unlock advanced levels and modes — pay once, keep forever.`}
               </p>
             </div>
           </div>
@@ -94,60 +145,71 @@ export function Paywall({ open, reason, mode, level, onClose, onUnlock, onWaitFo
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3.5">
-            <PlanCard
-              selected={plan === "monthly"}
-              onClick={() => setPlan("monthly")}
-              name="Monthly"
-              price="RM19"
-              suffix="/mo"
-              line="Cancel anytime"
-            />
-            <PlanCard
-              selected={plan === "yearly"}
-              onClick={() => setPlan("yearly")}
-              name="Yearly"
-              price="RM119"
-              suffix="/yr"
-              line="Just RM9.92/mo"
-              badge="SAVE 47%"
-            />
-            <PlanCard
-              selected={plan === "team"}
-              onClick={() => setPlan("team")}
-              name="Team · 5 seats"
-              price="RM399"
-              suffix="/yr"
-              line="For HR teams"
-            />
+            {(Object.values(TIERS) as Array<typeof TIERS["basic"]>).map((t) => (
+              <PlanCard
+                key={t.id}
+                selected={tier === t.id}
+                onClick={() => setTier(t.id)}
+                name={t.name}
+                price={t.priceLabel}
+                suffix=" once"
+                line={t.perks[0]}
+                badge={t.badge}
+              />
+            ))}
           </div>
 
-          <ul className="flex flex-col gap-2 mt-1">
-            {[
-              "Unlimited lives — never wait to play",
-              "All levels & jurisdictions (EA1955, Sabah, Sarawak)",
-              "Boss Battles and weekly Ranked challenges",
-              "Streak protection — one missed day won't reset you",
-              "HR Compliance Certificate on track completion",
-              "Personal analytics dashboard",
-            ].map((line) => (
-              <li key={line} className="pl-6 relative text-[14px] text-ink-2">
-                <span className="absolute left-0 top-1.5 w-4 h-4 bg-good rounded-full grid place-items-center text-white text-[10px]">✓</span>
-                {line}
-              </li>
-            ))}
-          </ul>
+          <div className="bg-surface border border-line rounded-[12px] p-4 mt-3">
+            <div className="font-semibold text-[13px] uppercase tracking-wide text-muted mb-2.5">
+              {TIERS[tier].name} includes
+            </div>
+            <ul className="flex flex-col gap-2">
+              {TIERS[tier].perks.map((perk) => (
+                <li key={perk} className="pl-6 relative text-[14px] text-ink-2">
+                  <span className="absolute left-0 top-1.5 w-4 h-4 bg-good rounded-full grid place-items-center text-white text-[10px]">✓</span>
+                  {perk}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {!user && (
+            <div className="mt-3 bg-accent-soft border border-[#FFD8C2] rounded-[10px] p-3 text-[13px] text-ink-2">
+              You need to sign in first so we can attach your purchase to your account.
+            </div>
+          )}
+
+          {error && (
+            <div className="mt-3 bg-bad-soft border border-[#F6CCCC] rounded-[10px] p-3 text-[13px] text-bad">
+              {error}
+            </div>
+          )}
 
           <p className="text-muted text-center mt-3.5 text-[12px]">
-            Join 4,200+ HR practitioners across Malaysia · 30-day money-back
+            One-time payment via Stripe · Secure · Receipt emailed
           </p>
         </div>
 
-        <div className="border-t border-line bg-surface px-4.5 py-3.5 flex justify-between gap-2.5 items-center" style={{ paddingLeft: "18px", paddingRight: "18px" }}>
-          <button onClick={isLives && onWaitForLives ? onWaitForLives : onClose} className="px-4 py-3 rounded-[10px] bg-transparent border border-line-2 text-ink font-semibold text-sm">
+        <div
+          className="border-t border-line bg-surface py-3.5 flex justify-between gap-2.5 items-center"
+          style={{ paddingLeft: "18px", paddingRight: "18px" }}
+        >
+          <button
+            onClick={isLives && onWaitForLives ? onWaitForLives : onClose}
+            className="px-4 py-3 rounded-[10px] bg-transparent border border-line-2 text-ink font-semibold text-sm"
+          >
             {isLives ? "Wait for refill" : "Maybe later"}
           </button>
-          <button onClick={onUnlock} className="px-5 py-3 rounded-[10px] bg-accent text-white font-semibold text-sm">
-            Continue → Unlock
+          <button
+            onClick={handleUpgrade}
+            disabled={busy}
+            className="px-5 py-3 rounded-[10px] bg-accent text-white font-semibold text-sm disabled:opacity-60"
+          >
+            {busy
+              ? "Opening checkout…"
+              : !user
+              ? "Sign in to continue →"
+              : `Pay ${TIERS[tier].priceLabel} →`}
           </button>
         </div>
       </div>

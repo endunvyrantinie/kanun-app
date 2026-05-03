@@ -44,13 +44,17 @@ export interface Question {
   why?: string;
 }
 
+export type Tier = "free" | "basic" | "extended" | "full";
+
 export interface GameState {
   xp: number;
   level: number;
   lives: number;
   streak: number;
   lastPlayed: string | null;
-  premium: boolean;
+  premium: boolean;          // Convenience: true if tier !== "free"
+  tier: Tier;                // Detailed plan
+  purchasedAt?: string;      // ISO timestamp of last upgrade
   skill: Record<SkillKey, number>;
   badges: string[];
   bestQuiz: number;

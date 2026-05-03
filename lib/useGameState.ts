@@ -16,6 +16,7 @@ const defaultState: GameState = {
   streak: 0,
   lastPlayed: null,
   premium: false,
+  tier: "free",
   skill: { recruitment: 0, termination: 0, compliance: 0, leave: 0, wages: 0 },
   badges: [],
   bestQuiz: 0,
@@ -42,9 +43,22 @@ function saveToStorage(state: GameState) {
   }
 }
 
+// Firestore rejects undefined field values. Strip them before any setDoc.
+function stripUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out as Partial<T>;
+}
+
 // Pick the higher / more advanced of two states (used when merging local progress
 // into an existing Firestore record after first sign-in).
 function mergeStates(a: GameState, b: GameState): GameState {
+  // Always trust the tier from the higher state — Firestore (cloud) wins for tier
+  // because that's what the webhook updates. We pick the highest tier seen.
+  const tierRank = { free: 0, basic: 1, extended: 2, full: 3 };
+  const winningTier = tierRank[a.tier] >= tierRank[b.tier] ? a.tier : b.tier;
   return {
     xp: Math.max(a.xp, b.xp),
     level: Math.max(a.level, b.level),
@@ -54,6 +68,8 @@ function mergeStates(a: GameState, b: GameState): GameState {
       ? (a.lastPlayed > b.lastPlayed ? a.lastPlayed : b.lastPlayed)
       : a.lastPlayed ?? b.lastPlayed,
     premium: a.premium || b.premium,
+    tier: winningTier,
+    purchasedAt: a.purchasedAt ?? b.purchasedAt,
     skill: {
       recruitment: Math.max(a.skill.recruitment, b.skill.recruitment),
       termination: Math.max(a.skill.termination, b.skill.termination),
@@ -109,11 +125,11 @@ export function useGameState() {
           const merged = mergeStates(cloud, local);
           setState(merged);
           // Push merged state back so cloud is up to date
-          await setDoc(ref, merged, { merge: true });
+          await setDoc(ref, stripUndefined(merged), { merge: true });
         } else {
           // First sign-in: push local state to cloud
           const local = loadFromStorage();
-          await setDoc(ref, local);
+          await setDoc(ref, stripUndefined(local));
           setState(local);
         }
         setSyncStatus("synced");
@@ -132,7 +148,7 @@ export function useGameState() {
     if (user && db) {
       if (writeTimer.current) clearTimeout(writeTimer.current);
       writeTimer.current = setTimeout(() => {
-        setDoc(doc(db!, "users", user.uid), state, { merge: true }).catch((e) => {
+        setDoc(doc(db!, "users", user.uid), stripUndefined(state), { merge: true }).catch((e) => {
           console.error("Firestore save failed:", e);
         });
       }, 600);

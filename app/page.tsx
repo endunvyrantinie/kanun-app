@@ -15,7 +15,7 @@ import { Paywall } from "@/components/Paywall";
 import { Toast, type ToastMessage } from "@/components/Toast";
 
 export default function Home() {
-  const { state, hydrated, levelProgress, actions } = useGameState();
+  const { state, hydrated, levelProgress, actions, user } = useGameState();
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [paywall, setPaywall] = useState<{
     open: boolean;
@@ -33,7 +33,7 @@ export default function Home() {
       setPaywall({ open: true, reason: "premium", mode });
       return;
     }
-    if (state.lives <= 0) {
+    if (state.lives <= 0 && !state.premium) {
       setPaywall({ open: true, reason: "lives" });
       return;
     }
@@ -120,11 +120,10 @@ export default function Home() {
         reason={paywall.reason}
         mode={paywall.mode}
         level={state.level}
+        user={user}
         onClose={() => setPaywall({ ...paywall, open: false })}
-        onUnlock={() => {
-          actions.grantPremium();
-          fireToast("Premium unlocked · enjoy unlimited play", state.level);
-          setPaywall({ ...paywall, open: false });
+        onSignInPrompt={() => {
+          fireToast("Click 'Sign in' in the top right first");
         }}
         onWaitForLives={() => {
           actions.refillLives();
