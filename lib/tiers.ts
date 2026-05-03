@@ -1,7 +1,7 @@
 import type { Tier } from "./types";
 
 export interface TierInfo {
-  id: Tier;
+  id: Exclude<Tier, "free">;
   name: string;
   priceMyr: number;
   priceLabel: string;
