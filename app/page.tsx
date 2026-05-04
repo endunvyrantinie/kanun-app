@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useGameState } from "@/lib/useGameState";
 import { MODES } from "@/lib/modes";
+import { tierAllowsBoss } from "@/lib/tiers";
 import type { Mode } from "@/lib/types";
 import { AppHeader } from "@/components/AppHeader";
 import { HomeHero } from "@/components/HomeHero";
@@ -25,16 +26,18 @@ export default function Home() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   function handlePlay(mode: Mode) {
-    // Paid users bypass the level gate (paying = unlock)
-    if (!state.premium && state.level < mode.minLevel) {
+    // Free users must grind XP to unlock modes; paid users skip the level gate.
+    if (state.tier === "free" && state.level < mode.minLevel) {
       setPaywall({ open: true, reason: "lock", mode });
       return;
     }
-    if (mode.premium && !state.premium) {
+    // Boss Battle (mode.premium) requires Extended tier or higher.
+    if (mode.premium && !tierAllowsBoss(state.tier)) {
       setPaywall({ open: true, reason: "premium", mode });
       return;
     }
-    if (state.lives <= 0 && !state.premium) {
+    // Lives gate only applies to free tier; paid tiers play unlimited.
+    if (state.lives <= 0 && state.tier === "free") {
       setPaywall({ open: true, reason: "lives" });
       return;
     }

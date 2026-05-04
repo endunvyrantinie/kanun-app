@@ -1,6 +1,7 @@
 "use client";
 
 import { MODES } from "@/lib/modes";
+import { tierAllowsBoss } from "@/lib/tiers";
 import type { GameState, Mode } from "@/lib/types";
 
 interface Props {
@@ -12,9 +13,10 @@ export function ModesGrid({ state, onPlay }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {MODES.map((mode) => {
-        // Premium users bypass the level gate
-        const locked = !state.premium && state.level < mode.minLevel;
-        const requiresPremium = mode.premium && !state.premium;
+        // Free users have a level gate; paid tiers skip it.
+        const locked = state.tier === "free" && state.level < mode.minLevel;
+        // Boss Battle requires Extended tier or higher.
+        const requiresPremium = mode.premium && !tierAllowsBoss(state.tier);
         return (
           <button
             key={mode.id}
