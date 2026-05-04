@@ -5,7 +5,7 @@ import type { GameState, SkillKey } from "./types";
 import { levelFromXp, xpForLevel, totalXpToReach } from "./progression";
 import { useAuth } from "./useAuth";
 import { db } from "./firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const STORAGE_KEY = "kanun.v1";
 
@@ -50,6 +50,22 @@ function stripUndefined<T extends object>(obj: T): Partial<T> {
     if (v !== undefined) out[k] = v;
   }
   return out as Partial<T>;
+}
+
+// Fields the client is allowed to write. Server-owned fields like tier,
+// premium, purchasedAt, stripeCustomerId, stripeSessionId are ONLY written
+// by the Stripe webhook — clients must never overwrite them.
+function clientWriteFields(state: GameState) {
+  return {
+    xp: state.xp,
+    level: state.level,
+    lives: state.lives,
+    streak: state.streak,
+    lastPlayed: state.lastPlayed,
+    skill: state.skill,
+    badges: state.badges,
+    bestQuiz: state.bestQuiz,
+  };
 }
 
 // Pick the higher / more advanced of two states (used when merging local progress
@@ -124,12 +140,12 @@ export function useGameState() {
           const local = loadFromStorage();
           const merged = mergeStates(cloud, local);
           setState(merged);
-          // Push merged state back so cloud is up to date
-          await setDoc(ref, stripUndefined(merged), { merge: true });
+          // Push only client fields back — never overwrite server-owned tier/premium
+          await setDoc(ref, stripUndefined(clientWriteFields(merged)), { merge: true });
         } else {
-          // First sign-in: push local state to cloud
+          // First sign-in: push local client fields to cloud
           const local = loadFromStorage();
-          await setDoc(ref, stripUndefined(local));
+          await setDoc(ref, stripUndefined(clientWriteFields(local)));
           setState(local);
         }
         setSyncStatus("synced");
@@ -140,7 +156,37 @@ export function useGameState() {
     })();
   }, [user, authLoading, hydrated]);
 
-  // Step 3: on every state change, save to localStorage immediately + Firestore (debounced)
+  // Step 3: subscribe to real-time updates of server-owned fields (tier, premium,
+  // purchasedAt). The Stripe webhook updates Firestore — onSnapshot pushes those
+  // changes into local state without needing a page reload.
+  useEffect(() => {
+    if (!user || !db) return;
+    const ref = doc(db, "users", user.uid);
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      const cloud = snap.data() as Partial<GameState>;
+      setState((current) => {
+        const next = { ...current };
+        let changed = false;
+        if (cloud.tier && cloud.tier !== current.tier) {
+          next.tier = cloud.tier;
+          changed = true;
+        }
+        if (typeof cloud.premium === "boolean" && cloud.premium !== current.premium) {
+          next.premium = cloud.premium;
+          changed = true;
+        }
+        if (cloud.purchasedAt && cloud.purchasedAt !== current.purchasedAt) {
+          next.purchasedAt = cloud.purchasedAt;
+          changed = true;
+        }
+        return changed ? next : current;
+      });
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Step 4: on every state change, save to localStorage immediately + Firestore (debounced)
   useEffect(() => {
     if (!hydrated) return;
     saveToStorage(state);
@@ -148,7 +194,7 @@ export function useGameState() {
     if (user && db) {
       if (writeTimer.current) clearTimeout(writeTimer.current);
       writeTimer.current = setTimeout(() => {
-        setDoc(doc(db!, "users", user.uid), stripUndefined(state), { merge: true }).catch((e) => {
+        setDoc(doc(db!, "users", user.uid), stripUndefined(clientWriteFields(state)), { merge: true }).catch((e) => {
           console.error("Firestore save failed:", e);
         });
       }, 600);
