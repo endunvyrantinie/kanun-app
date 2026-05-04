@@ -25,7 +25,8 @@ export default function Home() {
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   function handlePlay(mode: Mode) {
-    if (state.level < mode.minLevel) {
+    // Paid users bypass the level gate (paying = unlock)
+    if (!state.premium && state.level < mode.minLevel) {
       setPaywall({ open: true, reason: "lock", mode });
       return;
     }

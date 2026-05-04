@@ -12,7 +12,8 @@ export function ModesGrid({ state, onPlay }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {MODES.map((mode) => {
-        const locked = state.level < mode.minLevel;
+        // Premium users bypass the level gate
+        const locked = !state.premium && state.level < mode.minLevel;
         const requiresPremium = mode.premium && !state.premium;
         return (
           <button
