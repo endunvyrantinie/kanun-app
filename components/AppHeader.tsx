@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { GameState } from "@/lib/types";
 import { AuthButton } from "./AuthButton";
+import { useIsAdmin } from "@/lib/isAdminClient";
 
 interface Props {
   state: GameState;
@@ -9,6 +11,7 @@ interface Props {
 }
 
 export function AppHeader({ state, levelProgress }: Props) {
+  const { isAdmin } = useIsAdmin();
   return (
     <header className="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-8 py-3 flex items-center gap-4">
@@ -69,6 +72,16 @@ export function AppHeader({ state, levelProgress }: Props) {
             {state.level}
           </span>
         </div>
+
+        {/* Admin link (only for admins) */}
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-surface-2 border border-line-2 text-[12px] font-semibold text-ink hover:bg-line"
+          >
+            Admin
+          </Link>
+        )}
 
         {/* Auth */}
         <AuthButton />

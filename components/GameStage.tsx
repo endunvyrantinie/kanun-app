@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { QUESTIONS } from "@/lib/questions";
+import { useQuestions } from "@/lib/useQuestions";
 import type { DecisionOption, Mode, ModeId, Question, SkillKey } from "@/lib/types";
 import { lawLabel, topicToSkill, totalXpToReach, xpForLevel } from "@/lib/progression";
 
@@ -23,9 +23,9 @@ interface Props {
   onToast: (text: string, level?: number) => void;
 }
 
-function pickQuestions(filter: (q: Question) => boolean, n: number): Question[] {
-  const pool = QUESTIONS.filter(filter);
-  const arr = [...pool];
+function pickQuestions(pool: Question[], filter: (q: Question) => boolean, n: number): Question[] {
+  const candidates = pool.filter(filter);
+  const arr = [...candidates];
   const out: Question[] = [];
   while (out.length < n && arr.length) {
     const idx = Math.floor(Math.random() * arr.length);
@@ -34,34 +34,34 @@ function pickQuestions(filter: (q: Question) => boolean, n: number): Question[] 
   return out;
 }
 
-function buildSession(mode: Mode, level: number): GameSession {
+function buildSession(pool: Question[], mode: Mode, level: number): GameSession {
   switch (mode.id) {
     case "blitz": {
-      let qs = pickQuestions((q) => q.type === "mcq" && q.diff <= Math.max(2, level), 5);
-      if (qs.length < 5) qs = qs.concat(pickQuestions((q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length));
+      let qs = pickQuestions(pool, (q) => q.type === "mcq" && q.diff <= Math.max(2, level), 5);
+      if (qs.length < 5) qs = qs.concat(pickQuestions(pool, (q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length));
       return { mode, questions: qs, perQuestionTime: 15 };
     }
     case "tf": {
-      const qs = pickQuestions((q) => q.type === "tf", 8);
+      const qs = pickQuestions(pool, (q) => q.type === "tf", 8);
       return { mode, questions: qs, perQuestionTime: 8 };
     }
     case "scenario": {
-      let qs = pickQuestions((q) => q.type === "scenario", 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions((q) => q.type === "mcq" && q.diff >= 3 && !qs.includes(q), 3 - qs.length));
+      let qs = pickQuestions(pool, (q) => q.type === "scenario", 3);
+      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.type === "mcq" && q.diff >= 3 && !qs.includes(q), 3 - qs.length));
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "violation": {
-      let qs = pickQuestions((q) => q.type === "violation", 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions((q) => q.type === "scenario" && !qs.includes(q), 3 - qs.length));
+      let qs = pickQuestions(pool, (q) => q.type === "violation", 3);
+      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.type === "scenario" && !qs.includes(q), 3 - qs.length));
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "decision": {
-      const qs = pickQuestions((q) => q.type === "decision", 2);
+      const qs = pickQuestions(pool, (q) => q.type === "decision", 2);
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "boss": {
-      let qs = pickQuestions((q) => q.diff >= 4, 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions((q) => q.diff >= 3 && !qs.includes(q), 3 - qs.length));
+      let qs = pickQuestions(pool, (q) => q.diff >= 4, 3);
+      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.diff >= 3 && !qs.includes(q), 3 - qs.length));
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     default:
@@ -72,7 +72,11 @@ function buildSession(mode: Mode, level: number): GameSession {
 export function GameStage(props: Props) {
   const { mode, level, xp, onClose, onAwardXp, onLoseLife, onAddBadge, onToast } = props;
 
-  const session = useMemo(() => (mode ? buildSession(mode, level) : null), [mode, level]);
+  const { questions: pool } = useQuestions();
+  const session = useMemo(
+    () => (mode ? buildSession(pool, mode, level) : null),
+    [mode, level, pool],
+  );
   const [qIndex, setQIndex] = useState(0);
   const [statuses, setStatuses] = useState<("active" | "done" | "miss" | "")[]>([]);
   const [answered, setAnswered] = useState(false);
