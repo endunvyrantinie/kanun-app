@@ -13,10 +13,10 @@ export function ModesGrid({ state, onPlay }: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {MODES.map((mode) => {
-        // Free users have a level gate; paid tiers skip it.
-        const locked = state.tier === "free" && state.level < mode.minLevel;
-        // Boss Battle requires Extended tier or higher.
+        // A mode is locked if free user hasn't levelled up enough OR mode is Pro-only and they aren't paid.
         const requiresPremium = mode.premium && !tierAllowsBoss(state.tier);
+        const levelLocked = state.tier === "free" && state.level < mode.minLevel;
+        const locked = levelLocked || requiresPremium;
         return (
           <button
             key={mode.id}
@@ -36,7 +36,7 @@ export function ModesGrid({ state, onPlay }: Props) {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5zm-3 8V7a3 3 0 1 1 6 0v3z" />
                 </svg>
-                Lv {mode.minLevel}
+                {requiresPremium ? "Pro" : `Lv ${mode.minLevel}`}
               </div>
             )}
 
