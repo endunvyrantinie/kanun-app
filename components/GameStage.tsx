@@ -538,7 +538,7 @@ function QuestionView({
             <span className={`w-5 h-5 rounded-full grid place-items-center text-white text-xs font-bold ${feedback.ok ? "bg-good" : "bg-bad"}`}>
               {feedback.ok ? "✓" : "×"}
             </span>
-            {feedback.ok ? "Correct" : "Not quite"}
+            {feedback.ok ? "Nailed it" : "Oof, close"}
           </div>
           <div className="mt-2 text-ink-2 text-[14px] leading-relaxed">{feedback.why}</div>
           {feedback.extra && <div className="mt-1.5 text-muted text-[12px]">{feedback.extra}</div>}

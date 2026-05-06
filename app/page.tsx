@@ -78,7 +78,7 @@ export default function Home() {
           <div>
             <h2 className="text-[clamp(20px,2.4vw,26px)] font-semibold tracking-tight">Today&apos;s modes</h2>
             <p className="text-muted text-[13px] mt-1">
-              Each session is 1–3 minutes. Earn XP, build streaks, climb the leaderboard.
+              Pick a round. Win XP. Tell your colleagues you&apos;re &quot;doing CPD.&quot;
             </p>
           </div>
           <span className="text-muted text-[13px] hidden sm:inline">

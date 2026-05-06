@@ -81,7 +81,7 @@ export function Paywall({
           style={{ paddingLeft: "18px", paddingRight: "18px" }}
         >
           <div className="font-semibold text-[15px] flex items-center gap-2.5">
-            {isLives ? "Out of lives" : "Unlock Kanun Pro"}
+            {isLives ? "Game over (for now)" : "Unlock Kanun Pro"}
           </div>
           <button
             onClick={onClose}
@@ -117,7 +117,7 @@ export function Paywall({
             </div>
             <div className="relative">
               <h2 className="text-[20px] font-semibold text-white tracking-tight">
-                {isLives ? "You're out of lives" : `Unlock ${mode?.name ?? "everything"} for good`}
+                {isLives ? "You died. Like, mathematically." : `Unlock ${mode?.name ?? "everything"} for good`}
               </h2>
               <p className="text-white/75 mt-1 text-[13px]">
                 {isLives
