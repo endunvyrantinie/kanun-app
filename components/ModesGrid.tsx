@@ -42,13 +42,17 @@ export function ModesGrid({ state, onPlay }: Props) {
 
             <div className="flex items-center gap-3">
               <div
-                className={`w-10 h-10 rounded-[10px] grid place-items-center ${
-                  locked ? "bg-surface-2 text-muted" : "bg-accent-soft text-accent"
+                className={`w-12 h-12 rounded-[14px] grid place-items-center text-[26px] ${
+                  locked ? "bg-surface-2 grayscale opacity-60" : "bg-accent-soft"
                 }`}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d={mode.iconPath} />
-                </svg>
+                {mode.iconEmoji ? (
+                  <span aria-hidden>{mode.iconEmoji}</span>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d={mode.iconPath} />
+                  </svg>
+                )}
               </div>
               <div>
                 <div className="font-semibold text-[15px]">{mode.name}</div>

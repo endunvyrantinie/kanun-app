@@ -68,4 +68,5 @@ export interface Mode {
   minLevel: number;
   premium?: boolean;
   iconPath: string;
+  iconEmoji?: string;
 }

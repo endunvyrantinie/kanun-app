@@ -14,7 +14,7 @@ export function DailyStreakCard({ streak }: Props) {
         className="absolute -right-12 -top-12 w-[220px] h-[220px] pointer-events-none"
         style={{
           background:
-            "radial-gradient(closest-side, rgba(255,90,31,.6), rgba(255,90,31,0))",
+            "radial-gradient(closest-side, rgba(124,58,237,.6), rgba(124,58,237,0))",
         }}
       />
       <div className="relative">

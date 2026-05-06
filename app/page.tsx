@@ -9,12 +9,15 @@ import type { Mode } from "@/lib/types";
 import { AppHeader } from "@/components/AppHeader";
 import { HomeHero } from "@/components/HomeHero";
 import { DailyStreakCard } from "@/components/DailyStreakCard";
+import { DailyScenarioCard } from "@/components/DailyScenarioCard";
+import { CareerJourney } from "@/components/CareerJourney";
 import { ModesGrid } from "@/components/ModesGrid";
 import { SkillTracks } from "@/components/SkillTracks";
 import { Leaderboard } from "@/components/Leaderboard";
 import { GameStage } from "@/components/GameStage";
 import { Paywall } from "@/components/Paywall";
 import { Toast, type ToastMessage } from "@/components/Toast";
+import { xpForLevel, totalXpToReach } from "@/lib/progression";
 
 export default function Home() {
   const { state, hydrated, levelProgress, actions, user, lastLevelUp } = useGameState();
@@ -96,11 +99,25 @@ export default function Home() {
           <DailyStreakCard streak={state.streak} />
         </section>
 
+        {/* Daily scenario — featured at the top */}
+        <section className="mb-7">
+          <DailyScenarioCard onPlay={handlePlay} />
+        </section>
+
+        {/* Your Journey strip */}
+        <section className="mb-7">
+          <CareerJourney
+            level={state.level}
+            xpInLevel={state.xp - totalXpToReach(state.level)}
+            xpNeededForLevel={xpForLevel(state.level)}
+          />
+        </section>
+
         <div id="modes-section" className="flex items-end justify-between gap-3 mt-9 mb-3.5">
           <div>
-            <h2 className="text-[clamp(20px,2.4vw,26px)] font-semibold tracking-tight">Today&apos;s modes</h2>
+            <h2 className="text-[clamp(20px,2.4vw,26px)] font-semibold tracking-tight">Pick your mode</h2>
             <p className="text-muted text-[13px] mt-1">
-              Pick a round. Win XP. Tell your colleagues you&apos;re &quot;doing CPD.&quot;
+              Six different ways to play. Find your favourite.
             </p>
           </div>
           <span className="text-muted text-[13px] hidden sm:inline">

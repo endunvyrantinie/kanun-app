@@ -103,7 +103,7 @@ export function Paywall({
               className="absolute -top-10 -right-15 w-[200px] h-[200px] pointer-events-none"
               style={{
                 background:
-                  "radial-gradient(closest-side, rgba(255,90,31,.45), transparent 70%)",
+                  "radial-gradient(closest-side, rgba(124,58,237,.45), transparent 70%)",
               }}
             />
             <div className="w-12 h-12 bg-white/[0.08] rounded-[12px] grid place-items-center flex-shrink-0 relative">
