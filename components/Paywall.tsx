@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Mode, Tier } from "@/lib/types";
-import { TIERS } from "@/lib/tiers";
+import type { Mode } from "@/lib/types";
+import { PRO } from "@/lib/tiers";
 import type { User } from "firebase/auth";
 
 interface Props {
@@ -26,7 +26,6 @@ export function Paywall({
   onSignInPrompt,
   onWaitForLives,
 }: Props) {
-  const [tier, setTier] = useState<Exclude<Tier, "free">>("extended");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +56,7 @@ export function Paywall({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tier,
+          tier: "pro",
           uid: user.uid,
           email: user.email,
         }),
@@ -66,7 +65,6 @@ export function Paywall({
       if (!res.ok || !data.url) {
         throw new Error(data.error ?? "Could not start checkout");
       }
-      // Send the user off to Stripe-hosted checkout
       window.location.href = data.url;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Checkout failed";
@@ -77,16 +75,13 @@ export function Paywall({
 
   return (
     <div className="fixed inset-0 bg-black/55 z-[55] flex items-stretch justify-center sm:p-6">
-      <div className="bg-bg w-full max-w-[720px] h-full sm:h-auto sm:max-h-[calc(100vh-48px)] sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-bg w-full max-w-[560px] h-full sm:h-auto sm:max-h-[calc(100vh-48px)] sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         <div
           className="flex items-center justify-between gap-3.5 py-3.5 border-b border-line bg-surface"
           style={{ paddingLeft: "18px", paddingRight: "18px" }}
         >
           <div className="font-semibold text-[15px] flex items-center gap-2.5">
-            {isLives ? "Out of lives" : "Unlock Premium"}
-            <span className="bg-accent-soft text-accent px-2 py-0.5 rounded-full text-[11px] font-semibold">
-              {isLives ? "Refill" : `Lv ${need}+`}
-            </span>
+            {isLives ? "Out of lives" : "Unlock Kanun Pro"}
           </div>
           <button
             onClick={onClose}
@@ -122,49 +117,42 @@ export function Paywall({
             </div>
             <div className="relative">
               <h2 className="text-[20px] font-semibold text-white tracking-tight">
-                {isLives ? "You're out of lives" : `${mode?.name ?? "Premium"} is locked at Level ${need}`}
+                {isLives ? "You're out of lives" : `Unlock ${mode?.name ?? "everything"} for good`}
               </h2>
               <p className="text-white/75 mt-1 text-[13px]">
                 {isLives
                   ? "Wait 28 minutes for a free refill — or upgrade for unlimited play."
-                  : `You're ${pct}% of the way there. Upgrade to unlock advanced levels and modes — pay once, keep forever.`}
+                  : `One-time RM10.90. Yours forever. Every mode, every level, every jurisdiction.`}
               </p>
             </div>
           </div>
 
-          {!isLives && (
+          {!isLives && level < need && (
             <div className="bg-surface border border-line rounded-[12px] p-4 mb-3.5">
               <div className="flex justify-between items-center mb-2">
-                <b className="text-[14px]">Your progress to Lv {need}</b>
+                <b className="text-[14px]">You&apos;re {pct}% to Lv {need}</b>
                 <span className="text-accent text-[13px] font-semibold">{pct}%</span>
               </div>
               <div className="h-2 bg-surface-2 rounded-full overflow-hidden">
                 <div className="h-full bg-accent rounded-full transition-[width] duration-700" style={{ width: `${pct}%` }} />
               </div>
+              <p className="text-muted text-[12px] mt-2">Or skip the grind — unlock everything below.</p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 my-3.5">
-            {(Object.values(TIERS) as Array<typeof TIERS["basic"]>).map((t) => (
-              <PlanCard
-                key={t.id}
-                selected={tier === t.id}
-                onClick={() => setTier(t.id)}
-                name={t.name}
-                price={t.priceLabel}
-                suffix=" once"
-                line={t.perks[0]}
-                badge={t.badge}
-              />
-            ))}
-          </div>
-
-          <div className="bg-surface border border-line rounded-[12px] p-4 mt-3">
-            <div className="font-semibold text-[13px] uppercase tracking-wide text-muted mb-2.5">
-              {TIERS[tier].name} includes
+          {/* Single product card */}
+          <div className="bg-surface border-2 border-accent rounded-[14px] p-5 mb-3 relative">
+            <div className="absolute -top-2.5 left-4 bg-accent text-white px-2.5 py-0.5 text-[10px] font-bold rounded-full tracking-wide">
+              ONE-TIME PAYMENT
             </div>
-            <ul className="flex flex-col gap-2">
-              {TIERS[tier].perks.map((perk) => (
+            <div className="flex items-baseline justify-between mb-3 mt-1">
+              <h3 className="text-[18px] font-semibold tracking-tight">{PRO.name}</h3>
+              <div className="text-[28px] font-bold tracking-tight tabular-nums">
+                {PRO.priceLabel}
+              </div>
+            </div>
+            <ul className="flex flex-col gap-2 mt-2">
+              {PRO.perks.map((perk) => (
                 <li key={perk} className="pl-6 relative text-[14px] text-ink-2">
                   <span className="absolute left-0 top-1.5 w-4 h-4 bg-good rounded-full grid place-items-center text-white text-[10px]">✓</span>
                   {perk}
@@ -175,7 +163,7 @@ export function Paywall({
 
           {!user && (
             <div className="mt-3 bg-accent-soft border border-[#FFD8C2] rounded-[10px] p-3 text-[13px] text-ink-2">
-              You need to sign in first so we can attach your purchase to your account.
+              Sign in first so we can attach your purchase to your account.
             </div>
           )}
 
@@ -186,7 +174,7 @@ export function Paywall({
           )}
 
           <p className="text-muted text-center mt-3.5 text-[12px]">
-            One-time payment via Stripe · Secure · Receipt emailed
+            Secure payment via Stripe · Receipt emailed · No subscription
           </p>
         </div>
 
@@ -209,49 +197,10 @@ export function Paywall({
               ? "Opening checkout…"
               : !user
               ? "Sign in to continue →"
-              : `Pay ${TIERS[tier].priceLabel} →`}
+              : `Pay ${PRO.priceLabel} →`}
           </button>
         </div>
       </div>
     </div>
-  );
-}
-
-function PlanCard({
-  selected,
-  onClick,
-  name,
-  price,
-  suffix,
-  line,
-  badge,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  name: string;
-  price: string;
-  suffix: string;
-  line: string;
-  badge?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative text-left p-3.5 rounded-[12px] border-[1.5px] transition-colors bg-surface ${
-        selected ? "border-accent bg-accent-soft" : "border-line hover:border-ink"
-      }`}
-    >
-      {badge && (
-        <span className="absolute -top-2 right-2.5 bg-accent text-white px-2 py-0.5 text-[10px] rounded-full font-bold tracking-wide">
-          {badge}
-        </span>
-      )}
-      <div className="font-semibold text-[14px]">{name}</div>
-      <div className="text-[22px] font-bold tracking-tight mt-1 tabular-nums">
-        {price}
-        <small className="text-[12px] font-medium text-muted">{suffix}</small>
-      </div>
-      <div className="text-muted text-[12px] mt-1">{line}</div>
-    </button>
   );
 }

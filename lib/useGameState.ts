@@ -71,10 +71,9 @@ function clientWriteFields(state: GameState) {
 // Pick the higher / more advanced of two states (used when merging local progress
 // into an existing Firestore record after first sign-in).
 function mergeStates(a: GameState, b: GameState): GameState {
-  // Always trust the tier from the higher state — Firestore (cloud) wins for tier
-  // because that's what the webhook updates. We pick the highest tier seen.
-  const tierRank = { free: 0, basic: 1, extended: 2, full: 3 };
-  const winningTier = tierRank[a.tier] >= tierRank[b.tier] ? a.tier : b.tier;
+  // Pick the more advanced tier. Anything that isn't "free" counts as paid.
+  const rank = (t: string) => (t === "free" ? 0 : 1);
+  const winningTier = rank(a.tier) >= rank(b.tier) ? a.tier : b.tier;
   return {
     xp: Math.max(a.xp, b.xp),
     level: Math.max(a.level, b.level),
@@ -157,10 +156,21 @@ export function useGameState() {
   }, [user, authLoading, hydrated]);
 
   // Step 3: subscribe to real-time updates of server-owned fields (tier, premium,
-  // purchasedAt). The Stripe webhook updates Firestore — onSnapshot pushes those
-  // changes into local state without needing a page reload.
+  // purchasedAt). When there's no user, force tier back to "free" — paid status
+  // should never apply to anonymous visitors, regardless of cached localStorage.
   useEffect(() => {
-    if (!user || !db) return;
+    if (!hydrated) return;
+
+    if (!user) {
+      setState((current) =>
+        current.tier === "free" && current.premium === false
+          ? current
+          : { ...current, tier: "free", premium: false, purchasedAt: undefined },
+      );
+      return;
+    }
+
+    if (!db) return;
     const ref = doc(db, "users", user.uid);
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
@@ -184,7 +194,7 @@ export function useGameState() {
       });
     });
     return () => unsub();
-  }, [user]);
+  }, [user, hydrated]);
 
   // Step 4: on every state change, save to localStorage immediately + Firestore (debounced)
   useEffect(() => {

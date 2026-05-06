@@ -44,7 +44,7 @@ export interface Question {
   why?: string;
 }
 
-export type Tier = "free" | "basic" | "extended" | "full";
+export type Tier = "free" | "pro";
 
 export interface GameState {
   xp: number;

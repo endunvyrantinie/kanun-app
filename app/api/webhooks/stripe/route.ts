@@ -1,15 +1,11 @@
 // POST /api/webhooks/stripe
-// Stripe sends events here when payments succeed/fail. We verify the
-// signature using the webhook secret, then mark the user as upgraded
-// in Firestore using the server-side Firebase Admin SDK.
+// Single-tier model: any successful checkout grants tier "pro".
 
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { getAdminDb } from "@/lib/firebaseAdmin";
 import type Stripe from "stripe";
-import type { Tier } from "@/lib/types";
 
-// Force Node runtime — webhook needs raw body + Buffer
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
@@ -35,10 +31,9 @@ export async function POST(req: NextRequest) {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       const uid = session.metadata?.uid;
-      const tier = session.metadata?.tier as Tier | undefined;
 
-      if (!uid || !tier || tier === "free") {
-        console.error("Webhook missing uid or tier in session metadata");
+      if (!uid) {
+        console.error("Webhook missing uid in session metadata");
         return NextResponse.json({ received: true });
       }
 
@@ -46,14 +41,14 @@ export async function POST(req: NextRequest) {
       await db.collection("users").doc(uid).set(
         {
           premium: true,
-          tier,
+          tier: "pro",
           purchasedAt: new Date().toISOString(),
           stripeCustomerId: session.customer ?? null,
           stripeSessionId: session.id,
         },
         { merge: true },
       );
-      console.log(`Granted ${tier} to user ${uid}`);
+      console.log(`Granted Pro to user ${uid}`);
     }
     return NextResponse.json({ received: true });
   } catch (err) {
