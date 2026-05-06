@@ -12,15 +12,15 @@ export function HomeHero({ onQuickPlay, onBrowse }: Props) {
     <div className="bg-surface border border-line rounded-[14px] p-7 sm:p-8 shadow-sm relative overflow-hidden">
       <div className="inline-flex items-center gap-2 text-muted text-[12px] uppercase tracking-wider mb-3.5">
         <span className="w-1.5 h-1.5 bg-accent rounded-full" />
-        Master Malaysian labour law
+        HR shouldn&apos;t be boring
       </div>
 
       <h1 className="text-[clamp(28px,4vw,44px)] font-semibold leading-[1.1] tracking-tight">
-        Learn the <span className="text-accent">Employment Act</span> the way you learned <span className="text-accent">Tetris</span>.
+        Learn <span className="text-accent">HR</span> the way you learned <span className="text-accent">Tetris</span>.
       </h1>
 
       <p className="text-muted mt-2.5 max-w-[56ch]">
-        One-minute games on the Employment Act 1955, Sabah Labour Ordinance, and Sarawak Labour Ordinance. Built for HR teams, in-house counsel, and managers who&apos;d rather earn XP than read a PDF.
+        Quick rounds. Real Malaysian workplace rules. Zero PDFs. Play five questions on your coffee break and accidentally end up knowing more than your boss.
       </p>
 
       <div className="flex gap-2.5 mt-5 flex-wrap">

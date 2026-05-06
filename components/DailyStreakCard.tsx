@@ -24,8 +24,8 @@ export function DailyStreakCard({ streak }: Props) {
         </div>
         <div className="text-white/70 mt-1 text-[13px]">
           {streak === 0
-            ? "Play one game today to start your streak."
-            : `Best yet — ${streak} day${streak === 1 ? "" : "s"} in a row.`}
+            ? "Show up tomorrow and the day after. Watch this number grow."
+            : `${streak} day${streak === 1 ? "" : "s"} in a row. Don't break it now.`}
         </div>
       </div>
 
