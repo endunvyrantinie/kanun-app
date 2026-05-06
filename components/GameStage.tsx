@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuestions } from "@/lib/useQuestions";
 import type { DecisionOption, Mode, ModeId, Question, SkillKey } from "@/lib/types";
 import { lawLabel, topicToSkill, totalXpToReach, xpForLevel } from "@/lib/progression";
+import { FeedbackForm } from "./FeedbackForm";
 
 type GameSession = {
   mode: Mode;
@@ -21,6 +22,31 @@ interface Props {
   onLoseLife: () => void;
   onAddBadge: (key: string) => void;
   onToast: (text: string, level?: number) => void;
+}
+
+// Plain-English consequence framing — gives a "real-world stakes" line under every answer.
+function consequenceFor(q: Question, correct: boolean): string {
+  const law = q.law === "EA1955" ? "EA 1955" : q.law === "Sabah" ? "Sabah Labour Ordinance" : "Sarawak Labour Ordinance";
+  if (correct) {
+    return `Compliant with ${law}. Move on with confidence.`;
+  }
+  // Topic-aware "wrong" framing
+  switch (q.topic) {
+    case "wages":
+      return `In real life: wage shortfall claims can mean back-pay orders, fines, or DGIR investigations.`;
+    case "hours":
+      return `In real life: this could trigger an OT-pay claim or DGIR complaint.`;
+    case "leave":
+      return `In real life: denying valid leave can attract claims and Industrial Court action.`;
+    case "termination":
+      return `In real life: a wrong call here often ends in unjust dismissal claims and back-wages.`;
+    case "recruitment":
+      return `In real life: discriminatory hiring breaches s.60M and PDPA 2010 — penalties and reputation damage follow.`;
+    case "compliance":
+      return `In real life: non-compliance can mean penalties, fines, or worse — a tainted record.`;
+    default:
+      return `In real life: a wrong call here can trigger penalties, disputes, or Industrial Court claims.`;
+  }
 }
 
 function pickQuestions(pool: Question[], filter: (q: Question) => boolean, n: number): Question[] {
@@ -81,7 +107,7 @@ export function GameStage(props: Props) {
   const [statuses, setStatuses] = useState<("active" | "done" | "miss" | "")[]>([]);
   const [answered, setAnswered] = useState(false);
   const [chosen, setChosen] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<{ ok: boolean; why: string; extra?: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ ok: boolean; why: string; extra?: string; consequence?: string } | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [results, setResults] = useState<null | {
     totalXp: number;
@@ -94,7 +120,7 @@ export function GameStage(props: Props) {
   }>(null);
 
   // For tallying within a session
-  const tallyRef = useRef({ correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true });
+  const tallyRef = useRef({ correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0 });
 
   // Init when session changes
   useEffect(() => {
@@ -105,7 +131,7 @@ export function GameStage(props: Props) {
     setChosen(null);
     setFeedback(null);
     setResults(null);
-    tallyRef.current = { correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true };
+    tallyRef.current = { correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0 };
     if (session.perQuestionTime > 0) setTimeLeft(session.perQuestionTime);
     else setTimeLeft(0);
   }, [session]);
@@ -143,10 +169,15 @@ export function GameStage(props: Props) {
     if (answered || !session) return;
     setAnswered(true);
     tallyRef.current.perfect = false;
+    tallyRef.current.streak = 0;
     onLoseLife();
     setStatus(qIndex, "miss");
     const q = session.questions[qIndex];
-    setFeedback({ ok: false, why: `Time's up — ${q.why ?? ""}` });
+    setFeedback({
+      ok: false,
+      why: `Time's up — ${q.why ?? ""}`,
+      consequence: consequenceFor(q, false),
+    });
   }
 
   function handleChoose(choice: number) {
@@ -167,17 +198,26 @@ export function GameStage(props: Props) {
       if (!ok) {
         onLoseLife();
         tallyRef.current.perfect = false;
+        tallyRef.current.streak = 0;
       } else {
         tallyRef.current.correct++;
+        tallyRef.current.streak++;
+        maybeCelebrateStreak();
       }
       setStatus(qIndex, ok ? "done" : "miss");
-      setFeedback({ ok, why: opt.why, extra: `Score: ${opt.score >= 0 ? "+" : ""}${opt.score}` });
+      setFeedback({
+        ok,
+        why: opt.why,
+        extra: `Score: ${opt.score >= 0 ? "+" : ""}${opt.score}`,
+        consequence: consequenceFor(q, ok),
+      });
       return;
     }
 
     const ok = choice === q.answer;
     if (ok) {
       tallyRef.current.correct++;
+      tallyRef.current.streak++;
       let earn = 10;
       if (mode?.id === "blitz") earn = 10 + Math.max(0, timeLeft);
       else if (mode?.id === "tf") earn = 8 + Math.max(0, timeLeft);
@@ -187,18 +227,28 @@ export function GameStage(props: Props) {
       tallyRef.current.totalXp += earn;
       onAwardXp(earn, topicToSkill(q.topic));
       onToast(`+${earn} XP`);
+      maybeCelebrateStreak();
       setStatus(qIndex, "done");
-      setFeedback({ ok: true, why: q.why ?? "" });
+      setFeedback({ ok: true, why: q.why ?? "", consequence: consequenceFor(q, true) });
     } else {
       tallyRef.current.perfect = false;
+      tallyRef.current.streak = 0;
       onLoseLife();
       if (mode?.id === "boss") {
         tallyRef.current.alive = false;
         onLoseLife(); // boss bites extra
       }
       setStatus(qIndex, "miss");
-      setFeedback({ ok: false, why: q.why ?? "" });
+      setFeedback({ ok: false, why: q.why ?? "", consequence: consequenceFor(q, false) });
     }
+  }
+
+  function maybeCelebrateStreak() {
+    const s = tallyRef.current.streak;
+    if (s === 3) onToast("🔥 3 in a row");
+    else if (s === 5) onToast("🔥🔥 5 in a row · keep going");
+    else if (s === 7) onToast("🔥🔥🔥 7 in a row · unstoppable");
+    else if (s >= 10 && s % 5 === 0) onToast(`🔥 ${s} in a row · monster`);
   }
 
   function next() {
@@ -532,7 +582,8 @@ function QuestionView({
         <div
           className={`mt-4 p-4 rounded-[12px] border ${
             feedback.ok ? "bg-good-soft border-[#B6E5D2]" : "bg-bad-soft border-[#F6CCCC]"
-          }`}
+          } animate-[pop_0.25s_cubic-bezier(.2,.8,.2,1)]`}
+          style={{ transformOrigin: "top center" }}
         >
           <div className="font-semibold flex items-center gap-2">
             <span className={`w-5 h-5 rounded-full grid place-items-center text-white text-xs font-bold ${feedback.ok ? "bg-good" : "bg-bad"}`}>
@@ -540,10 +591,22 @@ function QuestionView({
             </span>
             {feedback.ok ? "Nailed it" : "Oof, close"}
           </div>
+          {feedback.consequence && (
+            <div className={`mt-1.5 text-[12px] font-semibold ${feedback.ok ? "text-good" : "text-bad"}`}>
+              {feedback.ok ? "✓" : "⚠️"} {feedback.consequence}
+            </div>
+          )}
           <div className="mt-2 text-ink-2 text-[14px] leading-relaxed">{feedback.why}</div>
           {feedback.extra && <div className="mt-1.5 text-muted text-[12px]">{feedback.extra}</div>}
+          <FeedbackForm questionId={q.id} />
         </div>
       )}
+      <style jsx>{`
+        @keyframes pop {
+          0% { transform: scale(0.96); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useGameState } from "@/lib/useGameState";
 import { MODES } from "@/lib/modes";
 import { tierAllowsBoss } from "@/lib/tiers";
+import { careerTitle, isPromotion } from "@/lib/career";
 import type { Mode } from "@/lib/types";
 import { AppHeader } from "@/components/AppHeader";
 import { HomeHero } from "@/components/HomeHero";
@@ -16,8 +17,9 @@ import { Paywall } from "@/components/Paywall";
 import { Toast, type ToastMessage } from "@/components/Toast";
 
 export default function Home() {
-  const { state, hydrated, levelProgress, actions, user } = useGameState();
+  const { state, hydrated, levelProgress, actions, user, lastLevelUp } = useGameState();
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
+  const [promotion, setPromotion] = useState<{ from: number; to: number } | null>(null);
   const [paywall, setPaywall] = useState<{
     open: boolean;
     reason: "lock" | "lives" | "premium";
@@ -56,6 +58,26 @@ export default function Home() {
   function fireToast(text: string, level?: number) {
     setToast({ id: Date.now(), text, level });
   }
+
+  // Watch for level-ups → fire confetti + show promotion banner if it's a career milestone
+  useEffect(() => {
+    if (!lastLevelUp) return;
+    const { from, to } = lastLevelUp;
+    fireToast(`Level ${to} reached`, to);
+    // Confetti — dynamically imported to avoid SSR issues
+    import("canvas-confetti")
+      .then(({ default: confetti }) => {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+        setTimeout(() => confetti({ particleCount: 50, spread: 100, angle: 60, origin: { x: 0, y: 0.7 } }), 250);
+        setTimeout(() => confetti({ particleCount: 50, spread: 100, angle: 120, origin: { x: 1, y: 0.7 } }), 400);
+      })
+      .catch(() => {
+        /* lib not installed — silently no-op */
+      });
+    if (isPromotion(from, to)) {
+      setPromotion({ from, to });
+    }
+  }, [lastLevelUp]);
 
   // Avoid SSR/CSR mismatch
   if (!hydrated) {
@@ -135,6 +157,46 @@ export default function Home() {
           setPaywall({ ...paywall, open: false });
         }}
       />
+
+      {/* Promotion overlay — shown when user crosses an HR career tier */}
+      {promotion && (
+        <div
+          className="fixed inset-0 bg-black/55 z-[70] flex items-center justify-center p-6 animate-[fade_0.25s]"
+          onClick={() => setPromotion(null)}
+        >
+          <div
+            className="bg-bg rounded-2xl shadow-2xl max-w-[440px] w-full p-8 text-center relative animate-[promote_0.5s_cubic-bezier(.2,.8,.2,1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[12px] uppercase tracking-wider text-muted mb-2">Promotion</div>
+            <div className="text-[44px] mb-2">🎉</div>
+            <h2 className="text-3xl font-bold tracking-tight">
+              You&apos;re now a<br />
+              <span className="text-accent">{careerTitle(promotion.to)}</span>
+            </h2>
+            <p className="text-muted mt-3 text-[14px]">
+              Reached Level {promotion.to}. Keep going — your next title is waiting.
+            </p>
+            <button
+              onClick={() => setPromotion(null)}
+              className="mt-6 px-6 py-3 rounded-[10px] bg-accent text-white font-semibold text-sm hover:-translate-y-px transition-transform"
+            >
+              Back to work
+            </button>
+          </div>
+          <style jsx>{`
+            @keyframes fade {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes promote {
+              0% { transform: scale(0.8) translateY(20px); opacity: 0; }
+              60% { transform: scale(1.04) translateY(0); opacity: 1; }
+              100% { transform: scale(1) translateY(0); opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
     </>
   );
 }

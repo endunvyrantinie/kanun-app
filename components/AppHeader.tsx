@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { GameState } from "@/lib/types";
 import { AuthButton } from "./AuthButton";
 import { useIsAdmin } from "@/lib/isAdminClient";
+import { careerShort } from "@/lib/career";
 
 interface Props {
   state: GameState;
@@ -20,8 +21,8 @@ export function AppHeader({ state, levelProgress }: Props) {
             K
           </div>
           <div className="text-base font-semibold tracking-tight">
-            Kanun
-            <span className="text-muted font-normal text-[13px]"> · HR Law, played</span>
+            funhr
+            <span className="text-muted font-normal text-[13px]"> · {careerShort(state.level)}</span>
           </div>
         </div>
 

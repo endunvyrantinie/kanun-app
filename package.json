@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "canvas-confetti": "^1.9.4",
     "firebase": "^12.12.1",
     "firebase-admin": "^13.8.0",
     "next": "^15.1.0",
@@ -17,6 +18,7 @@
     "stripe": "^22.1.0"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

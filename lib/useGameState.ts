@@ -211,6 +211,8 @@ export function useGameState() {
     }
   }, [state, hydrated, user]);
 
+  const [lastLevelUp, setLastLevelUp] = useState<{ from: number; to: number; at: number } | null>(null);
+
   const awardXp = useCallback((amount: number, skillKey?: SkillKey) => {
     setState((s) => {
       const newXp = s.xp + amount;
@@ -222,6 +224,10 @@ export function useGameState() {
       const newBadges = [...s.badges];
       if (newLevel >= 5 && !newBadges.includes("rising")) newBadges.push("rising");
       if (newLevel >= 10 && !newBadges.includes("senior")) newBadges.push("senior");
+      // Detect level-up so the UI can fire confetti / role-up moments
+      if (newLevel > s.level) {
+        setLastLevelUp({ from: s.level, to: newLevel, at: Date.now() });
+      }
       return { ...s, xp: newXp, level: newLevel, skill: newSkill, badges: newBadges };
     });
   }, []);
@@ -266,6 +272,7 @@ export function useGameState() {
     levelProgress,
     syncStatus,
     user,
+    lastLevelUp,
     actions: {
       awardXp,
       loseLife,
