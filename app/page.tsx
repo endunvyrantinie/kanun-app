@@ -20,7 +20,7 @@ import { Toast, type ToastMessage } from "@/components/Toast";
 import { xpForLevel, totalXpToReach } from "@/lib/progression";
 
 export default function Home() {
-  const { state, hydrated, levelProgress, actions, user, lastLevelUp } = useGameState();
+  const { state, hydrated, levelProgress, actions, user, lastLevelUp, refillIn } = useGameState();
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [promotion, setPromotion] = useState<{ from: number; to: number } | null>(null);
   const [paywall, setPaywall] = useState<{
@@ -120,9 +120,11 @@ export default function Home() {
               Six different ways to play. Find your favourite.
             </p>
           </div>
-          <span className="text-muted text-[13px] hidden sm:inline">
-            Refill in <b className="text-ink">28:14</b>
-          </span>
+          {refillIn && (
+            <span className="text-muted text-[13px] hidden sm:inline">
+              Next life in <b className="text-ink tabular-nums">{refillIn}</b>
+            </span>
+          )}
         </div>
 
         <ModesGrid state={state} onPlay={handlePlay} />

@@ -50,6 +50,7 @@ export interface GameState {
   xp: number;
   level: number;
   lives: number;
+  livesRefilledAt: string | null;   // ISO — last time the refill clock ticked
   streak: number;
   lastPlayed: string | null;
   premium: boolean;          // Convenience: true if tier !== "free"

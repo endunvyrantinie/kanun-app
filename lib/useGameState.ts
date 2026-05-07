@@ -9,10 +9,14 @@ import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const STORAGE_KEY = "kanun.v1";
 
+const REFILL_MINUTES = 30;
+const MAX_LIVES = 5;
+
 const defaultState: GameState = {
   xp: 0,
   level: 1,
   lives: 5,
+  livesRefilledAt: null,
   streak: 0,
   lastPlayed: null,
   premium: false,
@@ -233,11 +237,18 @@ export function useGameState() {
   }, []);
 
   const loseLife = useCallback(() => {
-    setState((s) => ({ ...s, lives: Math.max(0, s.lives - 1) }));
+    setState((s) => {
+      // Pro and above never lose lives
+      if (s.tier !== "free") return s;
+      const newLives = Math.max(0, s.lives - 1);
+      // Start the refill clock when lives first drop below max
+      const livesRefilledAt = s.lives === MAX_LIVES ? new Date().toISOString() : s.livesRefilledAt;
+      return { ...s, lives: newLives, livesRefilledAt };
+    });
   }, []);
 
   const refillLives = useCallback(() => {
-    setState((s) => ({ ...s, lives: 5 }));
+    setState((s) => ({ ...s, lives: MAX_LIVES, livesRefilledAt: null }));
   }, []);
 
   const bumpStreak = useCallback(() => {
@@ -266,6 +277,49 @@ export function useGameState() {
   const xpNeededForLevel = xpForLevel(state.level);
   const levelProgress = Math.min(100, (xpInLevel / xpNeededForLevel) * 100);
 
+  // ---- Lives refill (free tier only) ----
+  // Background: every 60s, check if 30 minutes have passed and add a life if so.
+  useEffect(() => {
+    if (state.tier !== "free") return;
+    if (state.lives >= MAX_LIVES || !state.livesRefilledAt) return;
+    const tick = () => {
+      const minsSince = (Date.now() - new Date(state.livesRefilledAt!).getTime()) / 60000;
+      if (minsSince >= REFILL_MINUTES) {
+        setState((s) => {
+          if (s.tier !== "free" || s.lives >= MAX_LIVES) return s;
+          const newLives = Math.min(MAX_LIVES, s.lives + 1);
+          const stillRefilling = newLives < MAX_LIVES;
+          return {
+            ...s,
+            lives: newLives,
+            livesRefilledAt: stillRefilling ? new Date().toISOString() : null,
+          };
+        });
+      }
+    };
+    tick();
+    const id = setInterval(tick, 30 * 1000);
+    return () => clearInterval(id);
+  }, [state.tier, state.lives, state.livesRefilledAt]);
+
+  // Live countdown string (MM:SS) — re-renders every second while a refill is pending
+  const [now, setNow] = useState<number>(() => Date.now());
+  useEffect(() => {
+    if (state.tier !== "free") return;
+    if (state.lives >= MAX_LIVES || !state.livesRefilledAt) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [state.tier, state.lives, state.livesRefilledAt]);
+
+  let refillIn: string | null = null;
+  if (state.tier === "free" && state.lives < MAX_LIVES && state.livesRefilledAt) {
+    const elapsedMs = now - new Date(state.livesRefilledAt).getTime();
+    const remaining = Math.max(0, REFILL_MINUTES * 60 * 1000 - elapsedMs);
+    const m = Math.floor(remaining / 60000);
+    const s = Math.floor((remaining % 60000) / 1000);
+    refillIn = `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+
   return {
     state,
     hydrated,
@@ -273,6 +327,7 @@ export function useGameState() {
     syncStatus,
     user,
     lastLevelUp,
+    refillIn,
     actions: {
       awardXp,
       loseLife,
