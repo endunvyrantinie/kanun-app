@@ -9,10 +9,12 @@ import { careerShort } from "@/lib/career";
 interface Props {
   state: GameState;
   levelProgress: number;
+  effectiveLevel?: number;
 }
 
-export function AppHeader({ state, levelProgress }: Props) {
+export function AppHeader({ state, levelProgress, effectiveLevel }: Props) {
   const { isAdmin } = useIsAdmin();
+  const displayLevel = effectiveLevel ?? state.level;
   return (
     <header className="sticky top-0 z-30 backdrop-blur bg-bg/85 border-b border-line">
       <div className="max-w-[1180px] mx-auto px-4 sm:px-8 py-3 flex items-center gap-4">
@@ -22,7 +24,7 @@ export function AppHeader({ state, levelProgress }: Props) {
           </div>
           <div className="text-base font-semibold tracking-tight">
             funhr
-            <span className="text-muted font-normal text-[13px]"> · {careerShort(state.level)}</span>
+            <span className="text-muted font-normal text-[13px]"> · {careerShort(displayLevel)}</span>
           </div>
         </div>
 
@@ -70,7 +72,7 @@ export function AppHeader({ state, levelProgress }: Props) {
             />
           </div>
           <span className="bg-accent text-white font-bold px-2 h-6 min-w-[24px] rounded-full grid place-items-center text-xs">
-            {state.level}
+            {displayLevel}
           </span>
         </div>
 

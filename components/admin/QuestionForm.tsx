@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DecisionOption, Law, Question, QType, Topic } from "@/lib/types";
+import type { DecisionOption, Law, Question, QType } from "@/lib/types";
 
 interface Props {
   initial?: Question | null;
@@ -11,7 +11,7 @@ interface Props {
 }
 
 const LAWS: Law[] = ["EA1955", "Sabah", "Sarawak"];
-const TOPICS: Topic[] = ["wages", "hours", "leave", "termination", "recruitment", "compliance"];
+// Topics retained on questions (defaults to "compliance") but no longer surfaced as a form field.
 const TYPES: { value: QType; label: string }[] = [
   { value: "mcq", label: "Quiz Blitz / Boss · MCQ" },
   { value: "tf", label: "True / False Rush" },
@@ -25,7 +25,7 @@ function blankQuestion(): Question {
     id: "",
     type: "mcq",
     law: "EA1955",
-    topic: "wages",
+    topic: "compliance",  // default — field hidden from form
     diff: 1,
     text: "",
     options: ["", "", "", ""],
@@ -142,11 +142,7 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
             {LAWS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </Field>
-        <Field label="Topic">
-          <select value={q.topic} onChange={(e) => update("topic", e.target.value as Topic)} className="input">
-            {TOPICS.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </Field>
+        {/* Topic is auto-defaulted to "compliance" — no longer surfaced in the form */}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

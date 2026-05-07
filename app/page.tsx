@@ -20,7 +20,7 @@ import { Toast, type ToastMessage } from "@/components/Toast";
 import { xpForLevel, totalXpToReach } from "@/lib/progression";
 
 export default function Home() {
-  const { state, hydrated, levelProgress, actions, user, lastLevelUp, refillIn } = useGameState();
+  const { state, hydrated, levelProgress, actions, user, lastLevelUp, refillIn, effectiveLevel, isCapped } = useGameState();
   const [activeMode, setActiveMode] = useState<Mode | null>(null);
   const [promotion, setPromotion] = useState<{ from: number; to: number } | null>(null);
   const [paywall, setPaywall] = useState<{
@@ -91,7 +91,7 @@ export default function Home() {
 
   return (
     <>
-      <AppHeader state={state} levelProgress={levelProgress} />
+      <AppHeader state={state} levelProgress={levelProgress} effectiveLevel={effectiveLevel} />
 
       <main className="max-w-[1180px] mx-auto px-4 sm:px-8 pb-20 pt-4">
         <section className="my-7 grid lg:grid-cols-[1.4fr_1fr] gap-6">
@@ -107,9 +107,10 @@ export default function Home() {
         {/* Your Journey strip */}
         <section className="mb-7">
           <CareerJourney
-            level={state.level}
+            level={effectiveLevel}
             xpInLevel={state.xp - totalXpToReach(state.level)}
             xpNeededForLevel={xpForLevel(state.level)}
+            isFreeCapped={isCapped}
           />
         </section>
 
@@ -130,14 +131,10 @@ export default function Home() {
         <ModesGrid state={state} onPlay={handlePlay} />
 
         <div className="flex items-end justify-between gap-3 mt-9 mb-3.5">
-          <h2 className="text-[clamp(20px,2.4vw,26px)] font-semibold tracking-tight">Your progress</h2>
-          <span className="text-muted text-[13px]">5 skill tracks</span>
+          <h2 className="text-[clamp(20px,2.4vw,26px)] font-semibold tracking-tight">This week&apos;s leaderboard</h2>
         </div>
 
-        <div className="grid lg:grid-cols-[1.2fr_1fr] gap-4">
-          <SkillTracks state={state} />
-          <Leaderboard state={state} />
-        </div>
+        <Leaderboard state={state} />
 
         <p className="text-muted text-[12px] text-center pt-8 leading-relaxed">
           Educational tool only — not legal advice. Content references the Employment Act 1955 (as amended 2022),

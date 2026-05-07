@@ -220,10 +220,10 @@ export function useGameState() {
 
   const awardXp = useCallback((amount: number, skillKey?: SkillKey) => {
     setState((s) => {
-      const newXp = s.xp + amount;
+      const newXp = Math.max(0, s.xp + amount); // never go below zero
       const newLevel = levelFromXp(newXp);
       const newSkill = { ...s.skill };
-      if (skillKey && newSkill[skillKey] != null) {
+      if (amount > 0 && skillKey && newSkill[skillKey] != null) {
         newSkill[skillKey] = Math.min(100, newSkill[skillKey] + Math.round(amount * 0.6));
       }
       const newBadges = [...s.badges];
@@ -273,6 +273,11 @@ export function useGameState() {
   const addBadge = useCallback((key: string) => {
     setState((s) => (s.badges.includes(key) ? s : { ...s, badges: [...s.badges, key] }));
   }, []);
+
+  // Effective level: free tier capped at FREE_LEVEL_CAP (20). Pro is uncapped.
+  const FREE_LEVEL_CAP = 20;
+  const effectiveLevel = state.tier === "free" ? Math.min(FREE_LEVEL_CAP, state.level) : state.level;
+  const isCapped = state.tier === "free" && state.level >= FREE_LEVEL_CAP;
 
   const xpInLevel = state.xp - totalXpToReach(state.level);
   const xpNeededForLevel = xpForLevel(state.level);
@@ -329,6 +334,8 @@ export function useGameState() {
     user,
     lastLevelUp,
     refillIn,
+    effectiveLevel,
+    isCapped,
     actions: {
       awardXp,
       loseLife,

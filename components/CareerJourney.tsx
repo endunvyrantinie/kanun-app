@@ -6,12 +6,13 @@ interface Props {
   level: number;
   xpInLevel: number;
   xpNeededForLevel: number;
+  isFreeCapped?: boolean;
 }
 
 // Emoji per tier — visual progression cue
 const TIER_EMOJI = ["🌱", "📋", "💼", "📊", "🎯", "🏆", "👔", "🏛️"];
 
-export function CareerJourney({ level, xpInLevel, xpNeededForLevel }: Props) {
+export function CareerJourney({ level, xpInLevel, xpNeededForLevel, isFreeCapped }: Props) {
   const next = nextCareerTier(level);
   const currentIndex = CAREER_TIERS.findIndex((t, i) => {
     const nextT = CAREER_TIERS[i + 1];
@@ -44,11 +45,12 @@ export function CareerJourney({ level, xpInLevel, xpNeededForLevel }: Props) {
             const isPast = i < currentIndex;
             const isNext = i === currentIndex + 1;
             const isFuture = i > currentIndex + 1;
+            const isProGated = !!t.proOnly && isFreeCapped;
             return (
               <div key={t.minLevel} className="flex items-center">
                 <div className="flex flex-col items-center min-w-[78px]">
                   <div
-                    className={`w-12 h-12 rounded-full grid place-items-center text-2xl border-2 transition-all ${
+                    className={`w-12 h-12 rounded-full grid place-items-center text-2xl border-2 transition-all relative ${
                       isCurrent
                         ? "bg-accent text-white border-accent shadow-[0_0_0_4px_rgba(124,58,237,0.18)] scale-110"
                         : isPast
@@ -62,6 +64,14 @@ export function CareerJourney({ level, xpInLevel, xpNeededForLevel }: Props) {
                       <span className="text-accent text-base">✓</span>
                     ) : (
                       <span aria-hidden>{TIER_EMOJI[i] ?? "•"}</span>
+                    )}
+                    {isProGated && (
+                      <span
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-ink text-white grid place-items-center text-[10px] border border-bg"
+                        title="Requires Pro"
+                      >
+                        🔒
+                      </span>
                     )}
                   </div>
                   <div
@@ -86,8 +96,21 @@ export function CareerJourney({ level, xpInLevel, xpNeededForLevel }: Props) {
         </div>
       </div>
 
+      {/* Free user hit the cap — show upgrade nudge */}
+      {isFreeCapped && (
+        <div className="mt-5 bg-accent-soft border border-[#D8CFEC] rounded-[12px] p-4 flex items-start gap-3">
+          <span className="text-2xl">🔒</span>
+          <div className="flex-1">
+            <p className="font-semibold text-[14px] text-ink">You&apos;ve maxed out the free tier.</p>
+            <p className="text-muted text-[12px] mt-1">
+              HR Officer and beyond is Pro only. Upgrade RM10.90 (one-time) to unlock the rest of your career.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Progress within current level */}
-      {next && (
+      {next && !isFreeCapped && (
         <div className="mt-5">
           <div className="flex items-center justify-between text-[12px] text-muted mb-1.5">
             <span>Progress to next promotion</span>

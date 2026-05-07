@@ -120,7 +120,7 @@ export function GameStage(props: Props) {
   }>(null);
 
   // For tallying within a session
-  const tallyRef = useRef({ correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0 });
+  const tallyRef = useRef({ correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0, wrongs: 0 });
 
   // Init when session changes
   useEffect(() => {
@@ -131,7 +131,7 @@ export function GameStage(props: Props) {
     setChosen(null);
     setFeedback(null);
     setResults(null);
-    tallyRef.current = { correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0 };
+    tallyRef.current = { correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0, wrongs: 0 };
     if (session.perQuestionTime > 0) setTimeLeft(session.perQuestionTime);
     else setTimeLeft(0);
   }, [session]);
@@ -170,7 +170,9 @@ export function GameStage(props: Props) {
     setAnswered(true);
     tallyRef.current.perfect = false;
     tallyRef.current.streak = 0;
+    tallyRef.current.wrongs++;
     onLoseLife();
+    applyWrongPenalty();
     setStatus(qIndex, "miss");
     const q = session.questions[qIndex];
     setFeedback({
@@ -178,6 +180,16 @@ export function GameStage(props: Props) {
       why: `Time's up — ${q.why ?? ""}`,
       consequence: consequenceFor(q, false),
     });
+  }
+
+  // After the 3rd wrong answer in a session, every additional wrong costs XP.
+  function applyWrongPenalty() {
+    if (tallyRef.current.wrongs >= 3) {
+      const lost = 10;
+      tallyRef.current.totalXp = Math.max(0, tallyRef.current.totalXp - lost);
+      onAwardXp(-lost);
+      onToast(`−${lost} XP · stay sharp`);
+    }
   }
 
   function handleChoose(choice: number) {
@@ -199,6 +211,8 @@ export function GameStage(props: Props) {
         onLoseLife();
         tallyRef.current.perfect = false;
         tallyRef.current.streak = 0;
+        tallyRef.current.wrongs++;
+        applyWrongPenalty();
       } else {
         tallyRef.current.correct++;
         tallyRef.current.streak++;
@@ -233,7 +247,9 @@ export function GameStage(props: Props) {
     } else {
       tallyRef.current.perfect = false;
       tallyRef.current.streak = 0;
+      tallyRef.current.wrongs++;
       onLoseLife();
+      applyWrongPenalty();
       if (mode?.id === "boss") {
         tallyRef.current.alive = false;
         onLoseLife(); // boss bites extra
