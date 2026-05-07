@@ -82,6 +82,7 @@ function mergeStates(a: GameState, b: GameState): GameState {
     xp: Math.max(a.xp, b.xp),
     level: Math.max(a.level, b.level),
     lives: Math.max(a.lives, b.lives),
+    livesRefilledAt: a.livesRefilledAt ?? b.livesRefilledAt ?? null,
     streak: Math.max(a.streak, b.streak),
     lastPlayed: a.lastPlayed && b.lastPlayed
       ? (a.lastPlayed > b.lastPlayed ? a.lastPlayed : b.lastPlayed)
