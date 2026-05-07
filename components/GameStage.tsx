@@ -505,7 +505,7 @@ function QuestionView({
   onChoose: (i: number) => void;
   chosen: number | null;
   answered: boolean;
-  feedback: { ok: boolean; why: string; extra?: string } | null;
+  feedback: { ok: boolean; why: string; extra?: string; consequence?: string } | null;
 }) {
   const isTF = q.type === "tf";
   const opts = q.type === "decision"
