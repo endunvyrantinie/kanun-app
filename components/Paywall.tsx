@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import type { Mode } from "@/lib/types";
 import { PRO } from "@/lib/tiers";
 import type { User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { useAuth } from "@/lib/useAuth";
 
 interface Props {
   open: boolean;
@@ -26,8 +28,12 @@ export function Paywall({
   onSignInPrompt,
   onWaitForLives,
 }: Props) {
+  const { signIn } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Suppress unused-variable lint — we keep this prop for future use even though
+  // the in-component flow now handles sign-in automatically.
+  void onSignInPrompt;
 
   useEffect(() => {
     if (!open) return;
@@ -45,20 +51,37 @@ export function Paywall({
   const isLives = reason === "lives";
 
   async function handleUpgrade() {
-    if (!user) {
-      onSignInPrompt();
-      return;
-    }
-    setBusy(true);
     setError(null);
+    setBusy(true);
+
+    // Step 1 · ensure the user is signed in (open Google popup if not)
+    let activeUser: User | null = user;
+    if (!activeUser) {
+      try {
+        await signIn();
+        // After signIn() resolves, the SDK has the new user on `auth.currentUser`
+        activeUser = auth?.currentUser ?? null;
+      } catch {
+        setError("Sign-in cancelled. You need an account so we can attach your purchase.");
+        setBusy(false);
+        return;
+      }
+      if (!activeUser) {
+        setError("Sign-in didn't complete. Please try again.");
+        setBusy(false);
+        return;
+      }
+    }
+
+    // Step 2 · create the Stripe Checkout session and redirect
     try {
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tier: "pro",
-          uid: user.uid,
-          email: user.email,
+          uid: activeUser.uid,
+          email: activeUser.email,
         }),
       });
       const data = await res.json();
@@ -196,7 +219,7 @@ export function Paywall({
             {busy
               ? "Opening checkout…"
               : !user
-              ? "Sign in to continue →"
+              ? `Sign in & pay ${PRO.priceLabel} →`
               : `Pay ${PRO.priceLabel} →`}
           </button>
         </div>
