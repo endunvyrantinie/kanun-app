@@ -214,7 +214,7 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
             {(q.options as DecisionOption[]).map((opt, i) => (
               <div key={i} className="bg-surface-2 border border-line rounded-[10px] p-3 space-y-2">
                 <div className="flex gap-2">
-                  <span className="font-bold text-muted">{i + 1}.</span>
+                  <span className="font-bold text-muted">{String.fromCharCode(65 + i)}.</span>
                   <input
                     type="text"
                     placeholder="Option label"

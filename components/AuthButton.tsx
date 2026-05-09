@@ -37,7 +37,7 @@ export function AuthButton() {
 
   return (
     <button
-      onClick={() => signIn().catch((e) => alert("Sign-in failed: " + e.message))}
+      onClick={() => signIn().catch((e) => alert("Sign-in failed: " + e.message + "\n\nTip: If this is an 'unauthorized-domain' error, go to Firebase Console > Authentication > Settings > Authorized Domains and add '" + window.location.hostname + "' to the list."))}
       className="px-3 py-1.5 rounded-full bg-ink text-white text-[13px] font-semibold hover:opacity-90"
     >
       Sign in
