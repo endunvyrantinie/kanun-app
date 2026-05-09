@@ -90,8 +90,10 @@ function buildSession(
 
   switch (mode.id) {
     case "blitz": {
-      // Relax difficulty cap slightly as user levels up, but always allow a mix
-      let qs = pick((q) => q.type === "mcq" && q.diff <= Math.max(3, level), 5);
+      // For low-level players, prioritize Level 1 & 2 questions heavily
+      // For higher levels, gradually introduce harder questions
+      const maxDiff = level <= 2 ? 2 : Math.max(3, level);
+      let qs = pick((q) => q.type === "mcq" && q.diff <= maxDiff, 5);
       // If we don't have enough specific MCQs, take ANY MCQs
       if (qs.length < 5) {
         const extra = pick((q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length);
@@ -156,10 +158,11 @@ export function GameStage(props: Props) {
   } = props;
 
   const { questions: pool } = useQuestions();
+  // Lock session once mode is selected — don't rebuild on seenQuestions changes
+  // This prevents mid-game question shuffling
   const session = useMemo(
     () => (mode ? buildSession(pool, mode, level, seenQuestions, onResetSeen) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mode, level, pool, seenQuestions], 
+    [mode, level, pool], 
   );
   const [qIndex, setQIndex] = useState(0);
   const [statuses, setStatuses] = useState<("active" | "done" | "miss" | "")[]>([]);
@@ -180,7 +183,7 @@ export function GameStage(props: Props) {
   // For tallying within a session
   const tallyRef = useRef({ correct: 0, totalXp: 0, perfect: true, decisionScore: 0, alive: true, streak: 0, wrongs: 0 });
 
-  // Init when session changes
+  // Init when session changes (only when mode/pool/level changes, not seenQuestions)
   useEffect(() => {
     if (!session) return;
     setQIndex(0);
@@ -256,7 +259,8 @@ export function GameStage(props: Props) {
     if (timerRef.current) clearInterval(timerRef.current);
     setChosen(choice);
     const q = session.questions[qIndex];
-    onMarkSeen(q.id);
+    // Mark seen after the game session ends, not during
+    // This prevents the session from being rebuilt mid-game
 
     if (q.type === "decision") {
       const opt = (q.options as DecisionOption[])[choice];
@@ -355,6 +359,9 @@ export function GameStage(props: Props) {
     const accuracy = mode?.id === "decision"
       ? Math.max(0, Math.round((t.decisionScore / (total * 10)) * 100))
       : Math.round((t.correct / total) * 100);
+
+    // Mark all questions in this session as seen
+    session.questions.forEach((q) => onMarkSeen(q.id));
 
     if (t.correct > 0) onAddBadge("first");
     if (t.perfect && t.correct === total && mode?.id === "blitz") onAddBadge("perfect");
