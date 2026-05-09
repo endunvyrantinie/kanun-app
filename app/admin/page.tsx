@@ -8,6 +8,7 @@ import { QuestionForm } from "@/components/admin/QuestionForm";
 import type { QType, Question } from "@/lib/types";
 import { auth } from "@/lib/firebase";
 import { invalidateQuestionsCache } from "@/lib/useQuestions";
+import * as XLSX from "xlsx";
 
 const TYPE_LABEL: Record<QType, string> = {
   mcq: "Quiz Blitz",
@@ -127,6 +128,29 @@ export default function AdminPage() {
     }
   }
 
+  function handleExport() {
+    if (!questions) return;
+    const data = questions.map((q) => ({
+      ID: q.id,
+      Type: q.type,
+      Law: q.law,
+      Topic: q.topic,
+      Difficulty: q.diff,
+      Text: q.text || "",
+      Setup: q.setup || "",
+      Options: Array.isArray(q.options) 
+        ? q.options.map((o) => (typeof o === "string" ? o : o.label)).join(" | ") 
+        : "",
+      AnswerIndex: q.answer !== undefined ? q.answer : "",
+      Explanation: q.why || "",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Questions");
+    XLSX.writeFile(workbook, "kanun_questions.xlsx");
+  }
+
   // GATES ----------------------------------------------------
   if (authLoading) {
     return <CenterMsg>Loading…</CenterMsg>;
@@ -168,6 +192,19 @@ export default function AdminPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {questions !== null && questions.length > 0 && (
+            <button 
+              onClick={handleExport} 
+              className="px-4 py-2.5 rounded-[10px] border border-line-2 text-ink font-semibold text-sm inline-flex items-center gap-2 hover:bg-surface-2"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export Excel
+            </button>
+          )}
           {questions !== null && questions.length === 0 && (
             <button onClick={handleSeed} disabled={seeding} className="px-4 py-2.5 rounded-[10px] border border-line-2 text-ink font-semibold text-sm">
               {seeding ? "Importing…" : "Import default 104 questions"}
