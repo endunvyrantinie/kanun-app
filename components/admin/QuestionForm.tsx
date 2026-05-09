@@ -195,36 +195,44 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {q.type === "decision" ? (
             (q.options as DecisionOption[]).map((opt, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="answer"
-                  checked={q.answer === i}
-                  onChange={() => update("answer", i)}
-                  className="accent-accent"
-                  title="Mark as the best decision"
-                />
-                <span className="font-bold text-muted w-6">{String.fromCharCode(65 + i)}.</span>
-                <input
-                  type="text"
-                  placeholder="Option text"
+              <div key={i} className="bg-surface-2 border border-line rounded-[12px] p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="answer"
+                      checked={q.answer === i}
+                      onChange={() => update("answer", i)}
+                      className="accent-accent w-4 h-4"
+                      title="Mark as the best decision"
+                    />
+                    <span className="font-bold text-muted text-sm">{String.fromCharCode(65 + i)}.</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">Score:</span>
+                    <input
+                      type="number"
+                      value={opt.score}
+                      onChange={(e) => updateDecisionOption(i, { score: Number(e.target.value) })}
+                      className="input w-[60px] text-center py-1 px-2"
+                    />
+                    <button type="button" onClick={() => removeOption(i)} className="text-bad hover:bg-bad-soft p-1 rounded-md transition-colors">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <textarea
+                  rows={3}
+                  placeholder="Option text (the dilemma choice)"
                   value={opt.label}
                   onChange={(e) => updateDecisionOption(i, { label: e.target.value })}
-                  className="input flex-1"
+                  className="input text-[14px] leading-relaxed"
                 />
-                <input
-                  type="number"
-                  placeholder="Score"
-                  value={opt.score}
-                  onChange={(e) => updateDecisionOption(i, { score: Number(e.target.value) })}
-                  className="input w-20"
-                />
-                <button type="button" onClick={() => removeOption(i)} className="text-bad text-xs px-2">
-                  ×
-                </button>
               </div>
             ))
           ) : (
@@ -256,7 +264,7 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
           )}
           <p className="text-muted text-[12px]">
             {q.type === "decision" 
-              ? "Click the radio button next to the best decision. Use the long box for the option text and the small box for the score." 
+              ? "Click the radio button next to the best decision. Use the large text area for the option text and the small box for the score." 
               : "Click the radio button next to the correct answer."}
           </p>
         </div>
