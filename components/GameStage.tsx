@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuestions } from "@/lib/useQuestions";
 import type { DecisionOption, Mode, ModeId, Question, SkillKey } from "@/lib/types";
-import { lawLabel, topicToSkill, totalXpToReach, xpForLevel } from "@/lib/progression";
+import { totalXpToReach, xpForLevel } from "@/lib/progression";
 import { FeedbackForm } from "./FeedbackForm";
 
 type GameSession = {
@@ -26,27 +26,10 @@ interface Props {
 
 // Plain-English consequence framing — gives a "real-world stakes" line under every answer.
 function consequenceFor(q: Question, correct: boolean): string {
-  const law = q.law === "EA1955" ? "EA 1955" : q.law === "Sabah" ? "Sabah Labour Ordinance" : "Sarawak Labour Ordinance";
   if (correct) {
-    return `Compliant with ${law}. Move on with confidence.`;
+    return `Compliant. Move on with confidence.`;
   }
-  // Topic-aware "wrong" framing
-  switch (q.topic) {
-    case "wages":
-      return `In real life: wage shortfall claims can mean back-pay orders, fines, or DGIR investigations.`;
-    case "hours":
-      return `In real life: this could trigger an OT-pay claim or DGIR complaint.`;
-    case "leave":
-      return `In real life: denying valid leave can attract claims and Industrial Court action.`;
-    case "termination":
-      return `In real life: a wrong call here often ends in unjust dismissal claims and back-wages.`;
-    case "recruitment":
-      return `In real life: discriminatory hiring breaches s.60M and PDPA 2010 — penalties and reputation damage follow.`;
-    case "compliance":
-      return `In real life: non-compliance can mean penalties, fines, or worse — a tainted record.`;
-    default:
-      return `In real life: a wrong call here can trigger penalties, disputes, or Industrial Court claims.`;
-  }
+  return `In real life: a wrong call here can trigger penalties, disputes, or Industrial Court claims.`;
 }
 
 function pickQuestions(pool: Question[], filter: (q: Question) => boolean, n: number): Question[] {
@@ -201,14 +184,11 @@ export function GameStage(props: Props) {
 
     if (q.type === "decision") {
       const opt = (q.options as DecisionOption[])[choice];
-      // Standardize: Use q.answer to determine "correctness" for UI feedback, 
-      // but keep score-based XP and judgment tracking.
-      const isBest = choice === q.answer;
       const ok = opt.score >= 6;
       const earn = Math.max(0, opt.score) * 3 + 5;
       tallyRef.current.totalXp += earn;
       tallyRef.current.decisionScore += opt.score;
-      onAwardXp(earn, topicToSkill(q.topic));
+      onAwardXp(earn);
       onToast(`+${earn} XP · score ${opt.score >= 0 ? "+" : ""}${opt.score}`);
       
       if (!ok) {
@@ -225,7 +205,6 @@ export function GameStage(props: Props) {
       
       setStatus(qIndex, ok ? "done" : "miss");
       
-      // Combine option-specific why with global why
       const fullWhy = opt.why + (q.why ? "\n\n" + q.why : "");
       
       setFeedback({
@@ -248,7 +227,7 @@ export function GameStage(props: Props) {
       else if (mode?.id === "violation") earn = 22;
       else if (mode?.id === "boss") earn = 50 + q.diff * 8;
       tallyRef.current.totalXp += earn;
-      onAwardXp(earn, topicToSkill(q.topic));
+      onAwardXp(earn);
       onToast(`+${earn} XP`);
       maybeCelebrateStreak();
       setStatus(qIndex, "done");
@@ -540,12 +519,6 @@ function QuestionView({
   return (
     <div>
       <div className="flex gap-2 flex-wrap mb-3.5">
-        <span className="bg-accent-soft text-accent px-2.5 py-1 rounded-full text-[11px] font-medium">
-          {lawLabel(q.law)}
-        </span>
-        <span className="bg-surface-2 text-muted px-2.5 py-1 rounded-full text-[11px] font-medium">
-          {q.topic}
-        </span>
         <span className="bg-surface-2 text-muted px-2.5 py-1 rounded-full text-[11px] font-medium">
           Difficulty {q.diff}
         </span>
@@ -570,11 +543,9 @@ function QuestionView({
         {opts.map((label, i) => {
           const isCorrect = i === q.answer;
           const isChosen = chosen === i;
-          const isGoodDecision = q.type === "decision" && (q.options as DecisionOption[])[i].score >= 6;
           
           let cls = "border-line bg-surface";
           if (answered) {
-            // Standardize: Highlight the "best" answer (q.answer) as correct
             if (isCorrect) cls = "bg-good-soft border-good";
             else if (isChosen) cls = "bg-bad-soft border-bad";
             else cls = "border-line bg-surface opacity-55";

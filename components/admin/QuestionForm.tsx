@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DecisionOption, Law, Question, QType } from "@/lib/types";
+import type { DecisionOption, Question, QType } from "@/lib/types";
 
 interface Props {
   initial?: Question | null;
@@ -10,7 +10,6 @@ interface Props {
   saving?: boolean;
 }
 
-const LAWS: Law[] = ["EA1955", "Sabah", "Sarawak"];
 const TYPES: { value: QType; label: string }[] = [
   { value: "mcq", label: "Quiz Blitz / Boss · MCQ" },
   { value: "tf", label: "True / False Rush" },
@@ -23,8 +22,8 @@ function blankQuestion(): Question {
   return {
     id: "",
     type: "mcq",
-    law: "EA1955",
-    topic: "compliance",
+    law: "EA1955", // Internal default
+    topic: "compliance", // Internal default
     diff: 1,
     text: "",
     options: ["", "", "", ""],
@@ -118,7 +117,7 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="ID" hint="Unique, e.g. w20">
           <input
             type="text"
@@ -134,11 +133,6 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
             {TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
-          </select>
-        </Field>
-        <Field label="Law">
-          <select value={q.law} onChange={(e) => update("law", e.target.value as Law)} className="input">
-            {LAWS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </Field>
       </div>

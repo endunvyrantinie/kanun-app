@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/useAuth";
 import { useIsAdmin } from "@/lib/isAdminClient";
 import { QuestionForm } from "@/components/admin/QuestionForm";
-import type { Law, QType, Question, Topic } from "@/lib/types";
+import type { QType, Question } from "@/lib/types";
 import { auth } from "@/lib/firebase";
 import { invalidateQuestionsCache } from "@/lib/useQuestions";
 
@@ -30,8 +30,6 @@ export default function AdminPage() {
   const [seedMsg, setSeedMsg] = useState<string | null>(null);
 
   // Filters
-  const [filterLaw, setFilterLaw] = useState<Law | "all">("all");
-  const [filterTopic, setFilterTopic] = useState<Topic | "all">("all");
   const [filterType, setFilterType] = useState<QType | "all">("all");
   const [filterDiff, setFilterDiff] = useState<number | "all">("all");
   const [search, setSearch] = useState("");
@@ -71,8 +69,6 @@ export default function AdminPage() {
   const filtered = useMemo(() => {
     if (!questions) return [];
     return questions.filter((q) => {
-      if (filterLaw !== "all" && q.law !== filterLaw) return false;
-      if (filterTopic !== "all" && q.topic !== filterTopic) return false;
       if (filterType !== "all" && q.type !== filterType) return false;
       if (filterDiff !== "all" && q.diff !== filterDiff) return false;
       if (search.trim()) {
@@ -82,7 +78,7 @@ export default function AdminPage() {
       }
       return true;
     });
-  }, [questions, filterLaw, filterTopic, filterType, filterDiff, search]);
+  }, [questions, filterType, filterDiff, search]);
 
   async function handleSave(q: Question) {
     setSaving(true);
@@ -196,22 +192,7 @@ export default function AdminPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-surface border border-line rounded-[12px] p-4 mb-4 grid grid-cols-2 sm:grid-cols-5 gap-2.5">
-        <select value={filterLaw} onChange={(e) => setFilterLaw(e.target.value as Law | "all")} className="input">
-          <option value="all">All laws</option>
-          <option value="EA1955">EA 1955</option>
-          <option value="Sabah">Sabah</option>
-          <option value="Sarawak">Sarawak</option>
-        </select>
-        <select value={filterTopic} onChange={(e) => setFilterTopic(e.target.value as Topic | "all")} className="input">
-          <option value="all">All topics</option>
-          <option value="wages">Wages</option>
-          <option value="hours">Hours</option>
-          <option value="leave">Leave</option>
-          <option value="termination">Termination</option>
-          <option value="recruitment">Recruitment</option>
-          <option value="compliance">Compliance</option>
-        </select>
+      <div className="bg-surface border border-line rounded-[12px] p-4 mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value as QType | "all")} className="input">
           <option value="all">All modes</option>
           <option value="mcq">Quiz Blitz / Boss · MCQ</option>
@@ -262,8 +243,6 @@ export default function AdminPage() {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold">ID</th>
                 <th className="text-left px-3 py-3 font-semibold">Mode</th>
-                <th className="text-left px-3 py-3 font-semibold">Law</th>
-                <th className="text-left px-3 py-3 font-semibold">Topic</th>
                 <th className="text-left px-3 py-3 font-semibold">Diff</th>
                 <th className="text-left px-3 py-3 font-semibold">Question</th>
                 <th className="text-right px-4 py-3 font-semibold">Actions</th>
@@ -274,19 +253,13 @@ export default function AdminPage() {
                 <tr key={q.id} className="border-t border-line hover:bg-surface-2/40">
                   <td className="px-4 py-2.5 font-mono text-[12px]">{q.id}</td>
                   <td className="px-3 py-2.5">{TYPE_LABEL[q.type]}</td>
-                  <td className="px-3 py-2.5">{q.law}</td>
-                  <td className="px-3 py-2.5">{q.topic}</td>
                   <td className="px-3 py-2.5">{q.diff}</td>
-                  <td className="px-3 py-2.5 max-w-[400px] truncate">
-                    {q.text ?? q.setup ?? "—"}
+                  <td className="px-3 py-2.5 max-w-[500px] truncate">
+                    {q.text ?? q.setup}
                   </td>
-                  <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                    <button onClick={() => { setEditing(q); setCreating(false); }} className="text-accent text-[12px] font-semibold hover:underline mr-3">
-                      Edit
-                    </button>
-                    <button onClick={() => handleDelete(q.id)} className="text-bad text-[12px] font-semibold hover:underline">
-                      Delete
-                    </button>
+                  <td className="px-4 py-2.5 text-right space-x-2">
+                    <button onClick={() => setEditing(q)} className="text-accent hover:underline">Edit</button>
+                    <button onClick={() => handleDelete(q.id)} className="text-bad hover:underline">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -294,43 +267,39 @@ export default function AdminPage() {
           </table>
         </div>
       )}
-      {!loading && questions && questions.length > 0 && filtered.length === 0 && (
-        <p className="text-muted text-sm text-center py-8">No questions match the current filters.</p>
-      )}
 
-      {/* Edit / Create modal */}
-      {(editing || creating) && (
-        <div className="fixed inset-0 bg-black/55 z-[55] flex items-stretch justify-center sm:p-6 overflow-y-auto" onClick={() => { setEditing(null); setCreating(false); }}>
-          <div className="bg-bg w-full max-w-[760px] sm:rounded-2xl shadow-2xl flex flex-col my-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-line bg-surface flex items-center justify-between">
-              <h2 className="font-semibold">
-                {editing ? `Edit ${editing.id}` : "New question"}
-              </h2>
-              <button onClick={() => { setEditing(null); setCreating(false); }} className="text-muted hover:text-ink p-1">
-                ×
-              </button>
-            </div>
-            <div className="p-5 overflow-y-auto">
-              <QuestionForm
-                initial={editing}
-                onSave={handleSave}
-                onCancel={() => { setEditing(null); setCreating(false); }}
-                saving={saving}
-              />
-            </div>
+      {/* MODALS */}
+      {(creating || editing) && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-bg w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl p-6">
+            <h2 className="text-xl font-bold mb-4">{editing ? "Edit Question" : "New Question"}</h2>
+            <QuestionForm
+              initial={editing}
+              onSave={handleSave}
+              onCancel={() => {
+                setCreating(false);
+                setEditing(null);
+              }}
+              saving={saving}
+            />
           </div>
         </div>
       )}
 
       <style jsx>{`
         .input {
+          width: 100%;
           padding: 8px 12px;
-          border: 1px solid #E8E6E1;
+          border: 1px solid var(--line, #E8E6E1);
           border-radius: 10px;
           background: white;
-          font-size: 13px;
+          font-size: 14px;
           font-family: inherit;
           color: #0F0F12;
+        }
+        .input:focus {
+          outline: none;
+          border-color: #0F0F12;
         }
       `}</style>
     </main>
@@ -339,10 +308,8 @@ export default function AdminPage() {
 
 function CenterMsg({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen flex items-center justify-center p-6 bg-bg">
-      <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center shadow-sm">
-        {children}
-      </div>
-    </main>
+    <div className="min-h-[60vh] flex flex-col items-center justify-center text-center px-6">
+      {children}
+    </div>
   );
 }
