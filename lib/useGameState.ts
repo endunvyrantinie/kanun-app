@@ -124,9 +124,20 @@ export function useGameState() {
   useEffect(() => {
     if (!hydrated || authLoading) return;
 
-    // Signed out: nothing more to do (localStorage already loaded)
+    // Signed out: reset anonymous users to level 1 but preserve seenQuestions
     if (!user) {
       lastUidRef.current = null;
+      setState((current) => {
+        // If they have progress but no user, they're an anonymous user
+        // Reset to level 1 but keep seenQuestions so they don't see repeated questions
+        if (current.xp > 0 || current.level > 1) {
+          return {
+            ...defaultState,
+            seenQuestions: current.seenQuestions,
+          };
+        }
+        return current;
+      });
       return;
     }
     // Same user as last time: skip — no need to refetch

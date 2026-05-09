@@ -93,6 +93,21 @@ export default function Home() {
     <>
       <AppHeader state={state} levelProgress={levelProgress} effectiveLevel={effectiveLevel} />
 
+      {!user && (
+        <div className="bg-accent/10 border-b border-accent/30 px-4 sm:px-8 py-3 text-center text-sm text-ink">
+          <span className="font-semibold">Playing as guest:</span> Your progress resets each session. 
+          <button 
+            onClick={() => {
+              const authBtn = document.querySelector("[data-auth-button]");
+              if (authBtn instanceof HTMLElement) authBtn.click();
+            }}
+            className="ml-2 font-semibold text-accent hover:underline"
+          >
+            Sign in to save your progress
+          </button>
+        </div>
+      )}
+
       <main className="max-w-[1180px] mx-auto px-4 sm:px-8 pb-20 pt-4">
         <section className="my-7 grid lg:grid-cols-[1.4fr_1fr] gap-6">
           <HomeHero onQuickPlay={quickPlay} onBrowse={browseModes} />
