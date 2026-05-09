@@ -59,6 +59,7 @@ export interface GameState {
   skill: Record<SkillKey, number>;
   badges: string[];
   bestQuiz: number;
+  seenQuestions: string[]; // List of question IDs seen by the user
 }
 
 export interface Mode {

@@ -155,6 +155,9 @@ export default function Home() {
         onLoseLife={actions.loseLife}
         onAddBadge={actions.addBadge}
         onToast={fireToast}
+        seenQuestions={state.seenQuestions}
+        onMarkSeen={actions.markQuestionSeen}
+        onResetSeen={actions.resetSeenQuestions}
       />
 
       <Paywall

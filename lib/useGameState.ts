@@ -24,6 +24,7 @@ const defaultState: GameState = {
   skill: { recruitment: 0, termination: 0, compliance: 0, leave: 0, wages: 0 },
   badges: [],
   bestQuiz: 0,
+  seenQuestions: [],
 };
 
 function loadFromStorage(): GameState {
@@ -69,6 +70,7 @@ function clientWriteFields(state: GameState) {
     skill: state.skill,
     badges: state.badges,
     bestQuiz: state.bestQuiz,
+    seenQuestions: state.seenQuestions,
   };
 }
 
@@ -99,9 +101,9 @@ function mergeStates(a: GameState, b: GameState): GameState {
     },
     badges: Array.from(new Set([...a.badges, ...b.badges])),
     bestQuiz: Math.max(a.bestQuiz, b.bestQuiz),
+    seenQuestions: Array.from(new Set([...a.seenQuestions, ...b.seenQuestions])),
   };
 }
-
 export function useGameState() {
   const { user, loading: authLoading } = useAuth();
   const [state, setState] = useState<GameState>(defaultState);
@@ -343,6 +345,15 @@ export function useGameState() {
       bumpStreak,
       grantPremium,
       addBadge,
+      markQuestionSeen: useCallback((id: string) => {
+        setState((s) => {
+          if (s.seenQuestions.includes(id)) return s;
+          return { ...s, seenQuestions: [...s.seenQuestions, id] };
+        });
+      }, []),
+      resetSeenQuestions: useCallback(() => {
+        setState((s) => ({ ...s, seenQuestions: [] }));
+      }, []),
     },
   };
 }

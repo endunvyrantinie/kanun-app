@@ -22,6 +22,9 @@ interface Props {
   onLoseLife: () => void;
   onAddBadge: (key: string) => void;
   onToast: (text: string, level?: number) => void;
+  seenQuestions: string[];
+  onMarkSeen: (id: string) => void;
+  onResetSeen: () => void;
 }
 
 // Plain-English consequence framing — gives a "real-world stakes" line under every answer.
@@ -32,9 +35,34 @@ function consequenceFor(q: Question, correct: boolean): string {
   return `In real life: a wrong call here can trigger penalties, disputes, or Industrial Court claims.`;
 }
 
-function pickQuestions(pool: Question[], filter: (q: Question) => boolean, n: number): Question[] {
+function pickQuestions(
+  pool: Question[],
+  filter: (q: Question) => boolean,
+  n: number,
+  seenIds: string[],
+  onResetHistory?: () => void
+): Question[] {
   const candidates = pool.filter(filter);
-  const arr = [...candidates];
+  if (candidates.length === 0) return [];
+
+  // 1. Try picking from unseen candidates first
+  const unseen = candidates.filter((q) => !seenIds.includes(q.id));
+  
+  // If we don't have enough unseen questions, we reset the history for this filter
+  // and pick from the full candidate pool.
+  if (unseen.length < n) {
+    if (onResetHistory) onResetHistory();
+    const arr = [...candidates];
+    const out: Question[] = [];
+    while (out.length < n && arr.length) {
+      const idx = Math.floor(Math.random() * arr.length);
+      out.push(arr.splice(idx, 1)[0]);
+    }
+    return out;
+  }
+
+  // 2. Pick from unseen
+  const arr = [...unseen];
   const out: Question[] = [];
   while (out.length < n && arr.length) {
     const idx = Math.floor(Math.random() * arr.length);
@@ -43,34 +71,55 @@ function pickQuestions(pool: Question[], filter: (q: Question) => boolean, n: nu
   return out;
 }
 
-function buildSession(pool: Question[], mode: Mode, level: number): GameSession {
+function buildSession(
+  pool: Question[],
+  mode: Mode,
+  level: number,
+  seenIds: string[],
+  onResetHistory: () => void
+): GameSession {
+  const pick = (f: (q: Question) => boolean, n: number) => 
+    pickQuestions(pool, f, n, seenIds, onResetHistory);
+
   switch (mode.id) {
     case "blitz": {
-      let qs = pickQuestions(pool, (q) => q.type === "mcq" && q.diff <= Math.max(2, level), 5);
-      if (qs.length < 5) qs = qs.concat(pickQuestions(pool, (q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length));
+      let qs = pick((q) => q.type === "mcq" && q.diff <= Math.max(2, level), 5);
+      if (qs.length < 5) {
+        const extra = pick((q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 15 };
     }
     case "tf": {
-      const qs = pickQuestions(pool, (q) => q.type === "tf", 8);
+      const qs = pick((q) => q.type === "tf", 8);
       return { mode, questions: qs, perQuestionTime: 8 };
     }
     case "scenario": {
-      let qs = pickQuestions(pool, (q) => q.type === "scenario", 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.type === "mcq" && q.diff >= 3 && !qs.includes(q), 3 - qs.length));
+      let qs = pick((q) => q.type === "scenario", 3);
+      if (qs.length < 3) {
+        const extra = pick((q) => q.type === "mcq" && q.diff >= 3 && !qs.includes(q), 3 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "violation": {
-      let qs = pickQuestions(pool, (q) => q.type === "violation", 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.type === "scenario" && !qs.includes(q), 3 - qs.length));
+      let qs = pick((q) => q.type === "violation", 3);
+      if (qs.length < 3) {
+        const extra = pick((q) => q.type === "scenario" && !qs.includes(q), 3 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "decision": {
-      const qs = pickQuestions(pool, (q) => q.type === "decision", 2);
+      const qs = pick((q) => q.type === "decision", 2);
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "boss": {
-      let qs = pickQuestions(pool, (q) => q.diff >= 4, 3);
-      if (qs.length < 3) qs = qs.concat(pickQuestions(pool, (q) => q.diff >= 3 && !qs.includes(q), 3 - qs.length));
+      let qs = pick((q) => q.diff >= 4, 3);
+      if (qs.length < 3) {
+        const extra = pick((q) => q.diff >= 3 && !qs.includes(q), 3 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     default:
@@ -79,12 +128,16 @@ function buildSession(pool: Question[], mode: Mode, level: number): GameSession 
 }
 
 export function GameStage(props: Props) {
-  const { mode, level, xp, onClose, onAwardXp, onLoseLife, onAddBadge, onToast } = props;
+  const { 
+    mode, level, xp, onClose, onAwardXp, onLoseLife, onAddBadge, onToast,
+    seenQuestions, onMarkSeen, onResetSeen
+  } = props;
 
   const { questions: pool } = useQuestions();
   const session = useMemo(
-    () => (mode ? buildSession(pool, mode, level) : null),
-    [mode, level, pool],
+    () => (mode ? buildSession(pool, mode, level, seenQuestions, onResetSeen) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [mode, level, pool], 
   );
   const [qIndex, setQIndex] = useState(0);
   const [statuses, setStatuses] = useState<("active" | "done" | "miss" | "")[]>([]);
@@ -181,6 +234,7 @@ export function GameStage(props: Props) {
     if (timerRef.current) clearInterval(timerRef.current);
     setChosen(choice);
     const q = session.questions[qIndex];
+    onMarkSeen(q.id);
 
     if (q.type === "decision") {
       const opt = (q.options as DecisionOption[])[choice];
@@ -217,6 +271,7 @@ export function GameStage(props: Props) {
     }
 
     const ok = choice === q.answer;
+    // Mark seen regardless of correct/wrong
     if (ok) {
       tallyRef.current.correct++;
       tallyRef.current.streak++;
