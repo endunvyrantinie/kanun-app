@@ -198,42 +198,33 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
         <div className="space-y-2">
           {q.type === "decision" ? (
             (q.options as DecisionOption[]).map((opt, i) => (
-              <div key={i} className="bg-surface-2 border border-line rounded-[10px] p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="answer"
-                    checked={q.answer === i}
-                    onChange={() => update("answer", i)}
-                    className="accent-accent"
-                    title="Mark as the best decision (10 points)"
-                  />
-                  <span className="font-bold text-muted w-6">{String.fromCharCode(65 + i)}.</span>
-                  <input
-                    type="text"
-                    placeholder="Option label"
-                    value={opt.label}
-                    onChange={(e) => updateDecisionOption(i, { label: e.target.value })}
-                    className="input flex-1"
-                  />
-                  <input
-                    type="number"
-                    placeholder="Score"
-                    value={opt.score}
-                    onChange={(e) => updateDecisionOption(i, { score: Number(e.target.value) })}
-                    className="input w-20"
-                  />
-                  <button type="button" onClick={() => removeOption(i)} className="text-bad text-xs px-2">
-                    ×
-                  </button>
-                </div>
-                <textarea
-                  rows={2}
-                  placeholder="Why (rationale shown after picking)"
-                  value={opt.why}
-                  onChange={(e) => updateDecisionOption(i, { why: e.target.value })}
-                  className="input text-[13px]"
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="answer"
+                  checked={q.answer === i}
+                  onChange={() => update("answer", i)}
+                  className="accent-accent"
+                  title="Mark as the best decision"
                 />
+                <span className="font-bold text-muted w-6">{String.fromCharCode(65 + i)}.</span>
+                <input
+                  type="text"
+                  placeholder="Option text"
+                  value={opt.label}
+                  onChange={(e) => updateDecisionOption(i, { label: e.target.value })}
+                  className="input flex-1"
+                />
+                <input
+                  type="number"
+                  placeholder="Score"
+                  value={opt.score}
+                  onChange={(e) => updateDecisionOption(i, { score: Number(e.target.value) })}
+                  className="input w-20"
+                />
+                <button type="button" onClick={() => removeOption(i)} className="text-bad text-xs px-2">
+                  ×
+                </button>
               </div>
             ))
           ) : (
@@ -265,13 +256,13 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
           )}
           <p className="text-muted text-[12px]">
             {q.type === "decision" 
-              ? "Click the radio button next to the best decision (it will be highlighted as correct in the game)." 
+              ? "Click the radio button next to the best decision. Use the long box for the option text and the small box for the score." 
               : "Click the radio button next to the correct answer."}
           </p>
         </div>
       </div>
 
-      <Field label="Global Explanation (shown after answering)">
+      <Field label="Explanation (shown after answering)">
         <textarea
           rows={3}
           value={q.why ?? ""}
