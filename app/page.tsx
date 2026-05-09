@@ -185,11 +185,6 @@ export default function Home() {
         onSignInPrompt={() => {
           fireToast("Click 'Sign in' in the top right first");
         }}
-        onWaitForLives={() => {
-          actions.refillLives();
-          fireToast("Lives refilled");
-          setPaywall({ ...paywall, open: false });
-        }}
       />
 
       {/* Promotion overlay — shown when user crosses an HR career tier */}

@@ -15,7 +15,6 @@ interface Props {
   user: User | null;
   onClose: () => void;
   onSignInPrompt: () => void;
-  onWaitForLives?: () => void;
 }
 
 export function Paywall({
@@ -26,7 +25,6 @@ export function Paywall({
   user,
   onClose,
   onSignInPrompt,
-  onWaitForLives,
 }: Props) {
   const { signIn } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -144,7 +142,7 @@ export function Paywall({
               </h2>
               <p className="text-white/75 mt-1 text-[13px]">
                 {isLives
-                  ? "Wait 28 minutes for a free refill — or upgrade for unlimited play."
+                  ? "Wait 15 minutes for a free refill — or upgrade for unlimited play."
                   : `One-time RM10.90. Yours forever. Every mode, every level, every jurisdiction.`}
               </p>
             </div>
@@ -206,10 +204,10 @@ export function Paywall({
           style={{ paddingLeft: "18px", paddingRight: "18px" }}
         >
           <button
-            onClick={isLives && onWaitForLives ? onWaitForLives : onClose}
+            onClick={onClose}
             className="px-4 py-3 rounded-[10px] bg-transparent border border-line-2 text-ink font-semibold text-sm"
           >
-            {isLives ? "Wait for refill" : "Maybe later"}
+            {isLives ? "Close" : "Maybe later"}
           </button>
           <button
             onClick={handleUpgrade}

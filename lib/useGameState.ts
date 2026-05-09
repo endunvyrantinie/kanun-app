@@ -9,7 +9,7 @@ import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
 
 const STORAGE_KEY = "kanun.v1";
 
-const REFILL_MINUTES = 30;
+const REFILL_MINUTES = 15;
 const MAX_LIVES = 5;
 
 const defaultState: GameState = {
