@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { QUESTIONS } from "@/lib/questions";
+import { useQuestions } from "@/lib/useQuestions";
 
 interface Props {
   onQuickPlay: () => void;
@@ -13,6 +13,7 @@ const SHARE_TITLE = "funhr — learn HR like a game";
 const SHARE_TEXT = "Quick rounds on Malaysian HR law. Way better than reading the EA1955 — try a round:";
 
 export function HomeHero({ onQuickPlay, onBrowse }: Props) {
+  const { questions } = useQuestions();
   const [copied, setCopied] = useState(false);
 
   async function handleShare() {
@@ -84,7 +85,7 @@ export function HomeHero({ onQuickPlay, onBrowse }: Props) {
       </div>
 
       <div className="flex gap-4 mt-5 text-muted text-[13px] flex-wrap">
-        <span><b className="text-ink font-semibold">{QUESTIONS.length}</b> questions</span>
+        <span><b className="text-ink font-semibold">{questions.length}</b> questions</span>
         <span><b className="text-ink font-semibold">3</b> jurisdictions</span>
         <span><b className="text-ink font-semibold">5</b> skill tracks</span>
         <span><b className="text-ink font-semibold">22</b> levels</span>

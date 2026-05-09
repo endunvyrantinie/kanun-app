@@ -48,12 +48,19 @@ function pickQuestions(
   // 1. Try picking from unseen candidates first
   const unseen = candidates.filter((q) => !seenIds.includes(q.id));
   
-  // If we don't have enough unseen questions, we reset the history for this filter
-  // and pick from the full candidate pool.
+  // If we don't have enough unseen questions to fill the request
   if (unseen.length < n) {
-    if (onResetHistory) onResetHistory();
-    const arr = [...candidates];
-    const out: Question[] = [];
+    // If we have SOME unseen questions, use them and fill the rest with random candidates
+    // but only reset history if we are truly exhausted (unseen.length === 0)
+    if (unseen.length === 0 && onResetHistory) {
+      onResetHistory();
+    }
+    
+    // Mix unseen with some seen to fill the requirement
+    const out = [...unseen];
+    const seen = candidates.filter((q) => seenIds.includes(q.id));
+    const arr = [...seen];
+    
     while (out.length < n && arr.length) {
       const idx = Math.floor(Math.random() * arr.length);
       out.push(arr.splice(idx, 1)[0]);
@@ -61,7 +68,7 @@ function pickQuestions(
     return out;
   }
 
-  // 2. Pick from unseen
+  // 2. Pick purely from unseen
   const arr = [...unseen];
   const out: Question[] = [];
   while (out.length < n && arr.length) {
@@ -83,21 +90,32 @@ function buildSession(
 
   switch (mode.id) {
     case "blitz": {
-      let qs = pick((q) => q.type === "mcq" && q.diff <= Math.max(2, level), 5);
+      // Relax difficulty cap slightly as user levels up, but always allow a mix
+      let qs = pick((q) => q.type === "mcq" && q.diff <= Math.max(3, level), 5);
+      // If we don't have enough specific MCQs, take ANY MCQs
       if (qs.length < 5) {
         const extra = pick((q) => q.type === "mcq" && !qs.includes(q), 5 - qs.length);
+        qs = qs.concat(extra);
+      }
+      // If STILL not enough, take ANY question type to fulfill the session
+      if (qs.length < 5) {
+        const extra = pick((q) => !qs.includes(q), 5 - qs.length);
         qs = qs.concat(extra);
       }
       return { mode, questions: qs, perQuestionTime: 15 };
     }
     case "tf": {
-      const qs = pick((q) => q.type === "tf", 8);
+      let qs = pick((q) => q.type === "tf", 8);
+      if (qs.length < 8) {
+        const extra = pick((q) => q.type === "mcq" && q.diff <= 2 && !qs.includes(q), 8 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 8 };
     }
     case "scenario": {
       let qs = pick((q) => q.type === "scenario", 3);
       if (qs.length < 3) {
-        const extra = pick((q) => q.type === "mcq" && q.diff >= 3 && !qs.includes(q), 3 - qs.length);
+        const extra = pick((q) => (q.type === "mcq" || q.type === "violation") && q.diff >= 3 && !qs.includes(q), 3 - qs.length);
         qs = qs.concat(extra);
       }
       return { mode, questions: qs, perQuestionTime: 0 };
@@ -111,7 +129,11 @@ function buildSession(
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "decision": {
-      const qs = pick((q) => q.type === "decision", 2);
+      let qs = pick((q) => q.type === "decision", 2);
+      if (qs.length < 2) {
+        const extra = pick((q) => q.type === "scenario" && q.diff >= 4 && !qs.includes(q), 2 - qs.length);
+        qs = qs.concat(extra);
+      }
       return { mode, questions: qs, perQuestionTime: 0 };
     }
     case "boss": {
@@ -137,7 +159,7 @@ export function GameStage(props: Props) {
   const session = useMemo(
     () => (mode ? buildSession(pool, mode, level, seenQuestions, onResetSeen) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [mode, level, pool], 
+    [mode, level, pool, seenQuestions], 
   );
   const [qIndex, setQIndex] = useState(0);
   const [statuses, setStatuses] = useState<("active" | "done" | "miss" | "")[]>([]);
