@@ -11,7 +11,6 @@ interface Props {
 }
 
 const LAWS: Law[] = ["EA1955", "Sabah", "Sarawak"];
-// Topics retained on questions (defaults to "compliance") but no longer surfaced as a form field.
 const TYPES: { value: QType; label: string }[] = [
   { value: "mcq", label: "Quiz Blitz / Boss · MCQ" },
   { value: "tf", label: "True / False Rush" },
@@ -25,7 +24,7 @@ function blankQuestion(): Question {
     id: "",
     type: "mcq",
     law: "EA1955",
-    topic: "compliance",  // default — field hidden from form
+    topic: "compliance",
     diff: 1,
     text: "",
     options: ["", "", "", ""],
@@ -90,10 +89,10 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
         next.answer = 0;
       } else if (newType === "decision") {
         next.options = [
-          { label: "", score: 0, why: "" },
+          { label: "", score: 10, why: "" },
           { label: "", score: 0, why: "" },
         ];
-        delete (next as Partial<Question>).answer;
+        next.answer = 0;
       } else {
         if (!Array.isArray(prev.options) || (prev.options as DecisionOption[])[0]?.label !== undefined) {
           next.options = ["", "", "", ""];
@@ -108,8 +107,8 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
     e.preventDefault();
     setError(null);
     if (!q.id.trim()) return setError("ID is required (e.g. w20)");
-    if (!q.text?.trim() && q.type !== "decision") return setError("Question text is required");
-    if (q.type !== "decision" && q.text && q.text.length < 5) return setError("Question text too short");
+    if (!q.text?.trim()) return setError("Question text is required");
+    if (q.text && q.text.length < 5) return setError("Question text too short");
     try {
       await onSave(q);
     } catch (e) {
@@ -142,7 +141,6 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
             {LAWS.map((l) => <option key={l} value={l}>{l}</option>)}
           </select>
         </Field>
-        {/* Topic is auto-defaulted to "compliance" — no longer surfaced in the form */}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -177,27 +175,15 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
         </Field>
       )}
 
-      {q.type !== "decision" && (
-        <Field label="Question text">
-          <textarea
-            rows={2}
-            value={q.text ?? ""}
-            onChange={(e) => update("text", e.target.value)}
-            className="input"
-            required
-          />
-        </Field>
-      )}
-      {q.type === "decision" && (
-        <Field label="Question text (optional dilemma framing)">
-          <textarea
-            rows={2}
-            value={q.text ?? ""}
-            onChange={(e) => update("text", e.target.value)}
-            className="input"
-          />
-        </Field>
-      )}
+      <Field label="Question text">
+        <textarea
+          rows={2}
+          value={q.text ?? ""}
+          onChange={(e) => update("text", e.target.value)}
+          className="input"
+          required
+        />
+      </Field>
 
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -209,12 +195,20 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
           )}
         </div>
 
-        {q.type === "decision" ? (
-          <div className="space-y-2">
-            {(q.options as DecisionOption[]).map((opt, i) => (
+        <div className="space-y-2">
+          {q.type === "decision" ? (
+            (q.options as DecisionOption[]).map((opt, i) => (
               <div key={i} className="bg-surface-2 border border-line rounded-[10px] p-3 space-y-2">
-                <div className="flex gap-2">
-                  <span className="font-bold text-muted">{String.fromCharCode(65 + i)}.</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="answer"
+                    checked={q.answer === i}
+                    onChange={() => update("answer", i)}
+                    className="accent-accent"
+                    title="Mark as the best decision (10 points)"
+                  />
+                  <span className="font-bold text-muted w-6">{String.fromCharCode(65 + i)}.</span>
                   <input
                     type="text"
                     placeholder="Option label"
@@ -241,11 +235,9 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
                   className="input text-[13px]"
                 />
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {(q.options as string[]).map((opt, i) => (
+            ))
+          ) : (
+            (q.options as string[]).map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input
                   type="radio"
@@ -269,22 +261,24 @@ export function QuestionForm({ initial, onSave, onCancel, saving }: Props) {
                   </button>
                 )}
               </div>
-            ))}
-            <p className="text-muted text-[12px]">Click the radio button next to the correct answer.</p>
-          </div>
-        )}
+            ))
+          )}
+          <p className="text-muted text-[12px]">
+            {q.type === "decision" 
+              ? "Click the radio button next to the best decision (it will be highlighted as correct in the game)." 
+              : "Click the radio button next to the correct answer."}
+          </p>
+        </div>
       </div>
 
-      {q.type !== "decision" && (
-        <Field label="Why (explanation shown after answering)">
-          <textarea
-            rows={3}
-            value={q.why ?? ""}
-            onChange={(e) => update("why", e.target.value)}
-            className="input"
-          />
-        </Field>
-      )}
+      <Field label="Global Explanation (shown after answering)">
+        <textarea
+          rows={3}
+          value={q.why ?? ""}
+          onChange={(e) => update("why", e.target.value)}
+          className="input"
+        />
+      </Field>
 
       {error && (
         <div className="bg-bad-soft border border-[#F6CCCC] text-bad rounded-[10px] p-3 text-sm">

@@ -201,12 +201,16 @@ export function GameStage(props: Props) {
 
     if (q.type === "decision") {
       const opt = (q.options as DecisionOption[])[choice];
+      // Standardize: Use q.answer to determine "correctness" for UI feedback, 
+      // but keep score-based XP and judgment tracking.
+      const isBest = choice === q.answer;
       const ok = opt.score >= 6;
       const earn = Math.max(0, opt.score) * 3 + 5;
       tallyRef.current.totalXp += earn;
       tallyRef.current.decisionScore += opt.score;
       onAwardXp(earn, topicToSkill(q.topic));
       onToast(`+${earn} XP · score ${opt.score >= 0 ? "+" : ""}${opt.score}`);
+      
       if (!ok) {
         onLoseLife();
         tallyRef.current.perfect = false;
@@ -218,11 +222,16 @@ export function GameStage(props: Props) {
         tallyRef.current.streak++;
         maybeCelebrateStreak();
       }
+      
       setStatus(qIndex, ok ? "done" : "miss");
+      
+      // Combine option-specific why with global why
+      const fullWhy = opt.why + (q.why ? "\n\n" + q.why : "");
+      
       setFeedback({
         ok,
-        why: opt.why,
-        extra: `Score: ${opt.score >= 0 ? "+" : ""}${opt.score}`,
+        why: fullWhy,
+        extra: `Judgment Score: ${opt.score >= 0 ? "+" : ""}${opt.score}`,
         consequence: consequenceFor(q, ok),
       });
       return;
@@ -559,15 +568,18 @@ function QuestionView({
 
       <div className="flex flex-col gap-2.5 mt-4.5">
         {opts.map((label, i) => {
-          const isCorrect = q.type !== "decision" && i === q.answer;
+          const isCorrect = i === q.answer;
           const isChosen = chosen === i;
-          const isCorrectDecision = q.type === "decision" && (q.options as DecisionOption[])[i].score >= 6;
+          const isGoodDecision = q.type === "decision" && (q.options as DecisionOption[])[i].score >= 6;
+          
           let cls = "border-line bg-surface";
           if (answered) {
-            if (q.type === "decision" ? isCorrectDecision : isCorrect) cls = "bg-good-soft border-good";
+            // Standardize: Highlight the "best" answer (q.answer) as correct
+            if (isCorrect) cls = "bg-good-soft border-good";
             else if (isChosen) cls = "bg-bad-soft border-bad";
             else cls = "border-line bg-surface opacity-55";
           }
+          
           return (
             <button
               key={i}
@@ -579,7 +591,7 @@ function QuestionView({
             >
               <span
                 className={`w-7 h-7 rounded-lg grid place-items-center font-semibold text-[13px] flex-shrink-0 ${
-                  answered && (q.type === "decision" ? isCorrectDecision : isCorrect)
+                  answered && isCorrect
                     ? "bg-good text-white"
                     : answered && isChosen
                     ? "bg-bad text-white"
@@ -612,7 +624,7 @@ function QuestionView({
               {feedback.ok ? "✓" : "⚠️"} {feedback.consequence}
             </div>
           )}
-          <div className="mt-2 text-ink-2 text-[14px] leading-relaxed">{feedback.why}</div>
+          <div className="mt-2 text-ink-2 text-[14px] whitespace-pre-wrap leading-relaxed">{feedback.why}</div>
           {feedback.extra && <div className="mt-1.5 text-muted text-[12px]">{feedback.extra}</div>}
           <FeedbackForm questionId={q.id} />
         </div>
